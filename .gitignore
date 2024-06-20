@@ -1,0 +1,21 @@
+# Ignore node_modules directory
+node_modules/
+
+# Ignore any compiled binaries or executables
+*.o
+*.out
+*.exe
+
+# Ignore log files and other generated files
+*.log
+logs
+*.pid
+
+# Ignore .env files which may contain sensitive information
+.env
+.env.development
+.env.production
+
+# Ignore any files or directories that should not be committed
+.idea/
+.vscode/
