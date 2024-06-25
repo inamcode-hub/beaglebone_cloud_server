@@ -30,6 +30,25 @@ const waitForData = (serialNumber) => {
   });
 };
 
+const waitForUpdateAck = (serialNumber, registerAddress, newValue) => {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('Timeout waiting for update acknowledgment'));
+    }, 10000); // 10 seconds timeout, adjust as necessary
+
+    emitter.once('update_ack', (ack) => {
+      if (
+        ack.serialNumber === serialNumber &&
+        ack.registerAddress === registerAddress &&
+        ack.newValue === newValue
+      ) {
+        clearTimeout(timeout);
+        resolve(ack);
+      }
+    });
+  });
+};
+
 router.get('/connections', (req, res) => {
   const connections = getAllConnections();
   res.json({ connections: Object.keys(connections) }); // send list of serial numbers
@@ -50,17 +69,24 @@ router.post('/read-data', async (req, res) => {
   }
 });
 
-router.post('/update-register', (req, res) => {
+router.post('/update-register', async (req, res) => {
   const { serialNumber, registerAddress, newValue } = req.body;
   if (serialNumber && registerAddress !== undefined && newValue !== undefined) {
-    sendUpdateRegisterRequest(serialNumber, registerAddress, newValue);
-    res.json({ status: 'Request sent to update register' });
+    sendUpdateRegisterRequest(req.body);
+    try {
+      const ack = await waitForUpdateAck(
+        serialNumber,
+        registerAddress,
+        newValue
+      );
+      res.json({ status: 'Register updated', ack });
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
   } else {
-    res
-      .status(400)
-      .json({
-        error: 'serialNumber, registerAddress, and newValue are required',
-      });
+    res.status(400).json({
+      error: 'serialNumber, registerAddress, and newValue are required',
+    });
   }
 });
 

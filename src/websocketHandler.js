@@ -15,8 +15,12 @@ const handleMessage = async (ws, message) => {
 
   switch (parsedMessage.type) {
     case 'DEVICE_HANDSHAKE':
-      logger.info(`Handshake received from: ${parsedMessage.serialNumber}`);
-      addConnection(parsedMessage.serialNumber, ws);
+      if (parsedMessage.serialNumber) {
+        logger.info(`Handshake received from: ${parsedMessage.serialNumber}`);
+        addConnection(parsedMessage.serialNumber, ws);
+      } else {
+        logger.warn('Handshake received without serial number');
+      }
       break;
     case 'READ_DATA':
       handleReadData(parsedMessage.serialNumber);
@@ -26,6 +30,9 @@ const handleMessage = async (ws, message) => {
       break;
     case 'DATA_RESPONSE':
       handleDataResponse(parsedMessage);
+      break;
+    case 'UPDATE_ACK':
+      handleUpdateAck(parsedMessage);
       break;
     default:
       logger.warn(`Unknown message type: ${parsedMessage.type}`);
@@ -45,6 +52,7 @@ const handleReadData = (serialNumber) => {
 const handleUpdateRegister = (message) => {
   const { serialNumber, registerAddress, newValue } = message;
   const ws = getConnection(serialNumber);
+  console.log(message);
   if (ws) {
     ws.send(
       JSON.stringify({
@@ -74,6 +82,18 @@ const handleDataResponse = (parsedMessage) => {
     emitter.emit('data_received', serialNumber); // Emit event when data is received
   } else {
     logger.warn('Received data without serial number');
+  }
+};
+
+const handleUpdateAck = (parsedMessage) => {
+  const { serialNumber, registerAddress, newValue } = parsedMessage;
+  if (serialNumber) {
+    logger.info(
+      `Register ${registerAddress} updated to ${newValue} for device ${serialNumber}`
+    );
+    emitter.emit('update_ack', { serialNumber, registerAddress, newValue }); // Emit event when update is acknowledged
+  } else {
+    logger.warn('Update ACK received without serial number');
   }
 };
 
