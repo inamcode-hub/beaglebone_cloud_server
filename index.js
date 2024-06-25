@@ -17,13 +17,7 @@ wss.on('connection', (ws) => {
   console.log('New client connected');
 
   ws.on('message', function incoming(message) {
-    const data = JSON.parse(message);
-    if (data.type === 'handshake') {
-      console.log(`Device connected with serial number: ${data.serialNumber}`);
-      // Additional logic to authenticate or register the device could go here
-    } else {
-      handleMessage(ws, message);
-    }
+    handleMessage(ws, message);
   });
 
   ws.on('close', () => {

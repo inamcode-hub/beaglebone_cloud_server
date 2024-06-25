@@ -3,6 +3,9 @@ const handleMessage = (ws, message) => {
   const parsedMessage = JSON.parse(message);
 
   switch (parsedMessage.type) {
+    case 'DEVICE_HANDSHAKE':
+      console.log(`Handshake received from: ${parsedMessage.serialNumber}`);
+      break;
     case 'DATA_RESPONSE':
       console.log('Received data:', parsedMessage.data);
       break;
