@@ -8,8 +8,9 @@ const {
   getAllConnections,
 } = require('./connectionManager');
 const logger = require('./logger');
+const emitter = require('./eventEmitter');
 
-const handleMessage = (ws, message) => {
+const handleMessage = async (ws, message) => {
   const parsedMessage = JSON.parse(message);
 
   switch (parsedMessage.type) {
@@ -17,33 +18,21 @@ const handleMessage = (ws, message) => {
       logger.info(`Handshake received from: ${parsedMessage.serialNumber}`);
       addConnection(parsedMessage.serialNumber, ws);
       break;
-    case 'DATA_RESPONSE':
-      if (parsedMessage.serialNumber) {
-        logger.info(
-          `Received data from ${parsedMessage.serialNumber}: ${JSON.stringify(
-            parsedMessage.data
-          )}`
-        );
-        storeData(parsedMessage.serialNumber, parsedMessage.data);
-      } else {
-        logger.warn(
-          `Received data from an unknown device: ${JSON.stringify(
-            parsedMessage.data
-          )}`
-        );
-      }
+    case 'READ_DATA':
+      handleReadData(parsedMessage.serialNumber);
       break;
-    case 'UPDATE_ACK':
-      logger.info(
-        `Register ${parsedMessage.registerAddress} updated to ${parsedMessage.newValue} for device ${parsedMessage.serialNumber}`
-      );
+    case 'UPDATE_REGISTER':
+      handleUpdateRegister(parsedMessage);
+      break;
+    case 'DATA_RESPONSE':
+      handleDataResponse(parsedMessage);
       break;
     default:
       logger.warn(`Unknown message type: ${parsedMessage.type}`);
   }
 };
 
-const sendReadDataRequest = (serialNumber) => {
+const handleReadData = (serialNumber) => {
   const ws = getConnection(serialNumber);
   if (ws) {
     ws.send(JSON.stringify({ type: 'READ_DATA', serialNumber }));
@@ -53,7 +42,8 @@ const sendReadDataRequest = (serialNumber) => {
   }
 };
 
-const sendUpdateRegisterRequest = (serialNumber, registerAddress, newValue) => {
+const handleUpdateRegister = (message) => {
+  const { serialNumber, registerAddress, newValue } = message;
   const ws = getConnection(serialNumber);
   if (ws) {
     ws.send(
@@ -69,6 +59,21 @@ const sendUpdateRegisterRequest = (serialNumber, registerAddress, newValue) => {
     );
   } else {
     logger.error(`No connection found for device ${serialNumber}`);
+  }
+};
+
+const handleDataResponse = (parsedMessage) => {
+  const { serialNumber, data } = parsedMessage;
+  if (serialNumber) {
+    storeData(serialNumber, data);
+    logger.info(
+      `Received and stored data for serial number ${serialNumber}: ${JSON.stringify(
+        data
+      )}`
+    );
+    emitter.emit('data_received', serialNumber); // Emit event when data is received
+  } else {
+    logger.warn('Received data without serial number');
   }
 };
 
@@ -90,7 +95,9 @@ const getSerialNumberByWS = (ws) => {
 
 module.exports = {
   handleMessage,
-  sendReadDataRequest,
-  sendUpdateRegisterRequest,
+  handleReadData,
+  handleUpdateRegister,
   handleDisconnection,
+  sendReadDataRequest: handleReadData,
+  sendUpdateRegisterRequest: handleUpdateRegister,
 };
