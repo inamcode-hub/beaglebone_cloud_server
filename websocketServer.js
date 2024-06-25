@@ -1,5 +1,5 @@
 const handleMessage = (ws, message) => {
-  console.log(`Received message: ${message}`);
+  // console.log(`Received message: ${message}`);
   const parsedMessage = JSON.parse(message);
 
   switch (parsedMessage.type) {
@@ -17,13 +17,13 @@ const handleMessage = (ws, message) => {
 };
 
 const sendReadDataRequest = (ws) => {
-  ws.send(JSON.stringify({ type: 'READ_DATA' }));
+  // ws.send(JSON.stringify({ type: 'READ_DATA' }));
 };
 
 const sendUpdateRegisterRequest = (ws, registerAddress, newValue) => {
-  ws.send(
-    JSON.stringify({ type: 'UPDATE_REGISTER', registerAddress, newValue })
-  );
+  // ws.send(
+  //   JSON.stringify({ type: 'UPDATE_REGISTER', registerAddress, newValue })
+  // );
 };
 
 module.exports = {

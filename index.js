@@ -16,8 +16,14 @@ const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws) => {
   console.log('New client connected');
 
-  ws.on('message', (message) => {
-    handleMessage(ws, message);
+  ws.on('message', function incoming(message) {
+    const data = JSON.parse(message);
+    if (data.type === 'handshake') {
+      console.log(`Device connected with serial number: ${data.serialNumber}`);
+      // Additional logic to authenticate or register the device could go here
+    } else {
+      handleMessage(ws, message);
+    }
   });
 
   ws.on('close', () => {
@@ -34,9 +40,9 @@ wss.on('connection', (ws) => {
   }, 5000);
 
   // Example of sending an update register request after connection
-  // setTimeout(() => {
-  //   sendUpdateRegisterRequest(ws, 10, 42); // Update register 10 to value 42
-  // }, 10000);
+  setTimeout(() => {
+    sendUpdateRegisterRequest(ws, 17, 16); // Update register 10 to value 42
+  }, 3000);
 });
 
 server.listen(port, () => {
