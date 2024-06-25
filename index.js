@@ -5,7 +5,6 @@ const http = require('http');
 const WebSocket = require('ws');
 const websocketHandler = require('./src/websocketHandler');
 const routes = require('./src/routes');
-const { handleDisconnection } = require('./src/websocketHandler');
 
 const app = express();
 const port = process.env.PORT || 8080;
