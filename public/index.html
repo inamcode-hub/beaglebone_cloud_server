@@ -3,94 +3,165 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Device Dashboard</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-      }
-      #device-list {
-        list-style-type: none;
-        padding: 0;
-      }
-      #device-list li {
-        margin: 5px 0;
-        cursor: pointer;
-      }
-      #device-data {
-        margin-top: 20px;
-      }
-      table {
-        border-collapse: collapse;
-        width: 100%;
-      }
-      table,
-      th,
-      td {
-        border: 1px solid black;
-        padding: 8px;
-        text-align: left;
-      }
-      th {
-        background-color: #f2f2f2;
-      }
-    </style>
+    <title>BeagleBone IoT Device Management</title>
+    <link
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
   </head>
   <body>
-    <h1>Online Devices</h1>
-    <ul id="device-list"></ul>
-    <div id="device-data"></div>
+    <div class="container mt-5">
+      <h1 class="text-center">BeagleBone IoT Device Management</h1>
+
+      <!-- Read Data Section -->
+      <div class="card mt-4">
+        <div class="card-header">Read Data from Device</div>
+        <div class="card-body">
+          <form id="readDataForm">
+            <div class="form-group">
+              <label for="serialNumberRead">Serial Number</label>
+              <input
+                type="text"
+                class="form-control"
+                id="serialNumberRead"
+                required
+              />
+            </div>
+            <button type="submit" class="btn btn-primary">Read Data</button>
+          </form>
+          <div id="readDataResult" class="mt-3"></div>
+        </div>
+      </div>
+
+      <!-- Update Register Section -->
+      <div class="card mt-4">
+        <div class="card-header">Update Device Register</div>
+        <div class="card-body">
+          <form id="updateRegisterForm">
+            <div class="form-group">
+              <label for="serialNumberUpdate">Serial Number</label>
+              <input
+                type="text"
+                class="form-control"
+                id="serialNumberUpdate"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="registerAddress"
+                >Register Address<small>(Moisture Set Point 17)</small></label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="registerAddress"
+                value="17"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="newValue">New Value </label>
+              <input type="text" class="form-control" id="newValue" required />
+            </div>
+            <button type="submit" class="btn btn-primary">
+              Update Register
+            </button>
+          </form>
+          <div id="updateRegisterResult" class="mt-3"></div>
+        </div>
+      </div>
+
+      <!-- List Connections Section -->
+      <div class="card mt-4">
+        <div class="card-header">List All Device Connections</div>
+        <div class="card-body">
+          <button id="listConnectionsBtn" class="btn btn-primary">
+            List Connections
+          </button>
+          <div id="connectionsResult" class="mt-3"></div>
+        </div>
+      </div>
+    </div>
+
     <script>
-      async function fetchDevices() {
-        try {
-          const response = await fetch('/api/devices/connections');
-          const data = await response.json();
-          const deviceList = document.getElementById('device-list');
-          deviceList.innerHTML = '';
-
-          data.connections.forEach((serialNumber) => {
-            const li = document.createElement('li');
-            li.textContent = serialNumber;
-            li.onclick = () => fetchDeviceData(serialNumber);
-            deviceList.appendChild(li);
-          });
-        } catch (error) {
-          console.error('Error fetching devices:', error);
-        }
-      }
-
-      async function fetchDeviceData(serialNumber) {
-        try {
-          const response = await fetch('/api/devices/read-data', {
+      $(document).ready(function () {
+        // Handle Read Data form submission
+        $('#readDataForm').on('submit', function (event) {
+          event.preventDefault();
+          var serialNumber = $('#serialNumberRead').val();
+          $.ajax({
+            url: '/api/devices/read-data',
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ serialNumber }),
+            contentType: 'application/json',
+            data: JSON.stringify({ serialNumber: serialNumber }),
+            success: function (response) {
+              $('#readDataResult').html(
+                '<pre>' + JSON.stringify(response, null, 2) + '</pre>'
+              );
+            },
+            error: function (xhr) {
+              $('#readDataResult').html(
+                '<div class="alert alert-danger">Error: ' +
+                  xhr.responseJSON.message +
+                  '</div>'
+              );
+            },
           });
-          const data = await response.json();
-          const deviceDataDiv = document.getElementById('device-data');
-
-          if (data.status === 'Data received') {
-            deviceDataDiv.innerHTML = `<h2>Data for ${serialNumber}</h2>${formatDeviceData(
-              data.data
-            )}`;
-          } else {
-            deviceDataDiv.innerHTML = `<h2>Error fetching data for ${serialNumber}</h2><p>${data.error.message}</p>`;
-          }
-        } catch (error) {
-          console.error('Error fetching device data:', error);
-        }
-      }
-
-      function formatDeviceData(deviceData) {
-        let table = '<table><tr><th>Tag Name</th><th>Value</th></tr>';
-        deviceData.forEach((item) => {
-          table += `<tr><td>${item.tagName}</td><td>${item.value}</td></tr>`;
         });
-        table += '</table>';
-        return table;
-      }
 
-      document.addEventListener('DOMContentLoaded', fetchDevices);
+        // Handle Update Register form submission
+        $('#updateRegisterForm').on('submit', function (event) {
+          event.preventDefault();
+          var serialNumber = $('#serialNumberUpdate').val();
+          var registerAddress = $('#registerAddress').val();
+          var newValue = $('#newValue').val();
+          $.ajax({
+            url: '/api/devices/update-register',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+              serialNumber: serialNumber,
+              registerAddress: registerAddress,
+              newValue: newValue,
+            }),
+            success: function (response) {
+              $('#updateRegisterResult').html(
+                '<div class="alert alert-success">Register updated successfully.</div><pre>' +
+                  JSON.stringify(response, null, 2) +
+                  '</pre>'
+              );
+            },
+            error: function (xhr) {
+              $('#updateRegisterResult').html(
+                '<div class="alert alert-danger">Error: ' +
+                  xhr.responseJSON.message +
+                  '</div>'
+              );
+            },
+          });
+        });
+
+        // Handle List Connections button click
+        $('#listConnectionsBtn').on('click', function () {
+          $.ajax({
+            url: '/api/devices/connections',
+            method: 'GET',
+            success: function (response) {
+              $('#connectionsResult').html(
+                '<pre>' + JSON.stringify(response, null, 2) + '</pre>'
+              );
+            },
+            error: function (xhr) {
+              $('#connectionsResult').html(
+                '<div class="alert alert-danger">Error: ' +
+                  xhr.responseJSON.message +
+                  '</div>'
+              );
+            },
+          });
+        });
+      });
     </script>
   </body>
 </html>
