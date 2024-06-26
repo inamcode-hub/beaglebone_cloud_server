@@ -1,14 +1,12 @@
-// src/websocketHandler.js
-
 const {
   addConnection,
   storeData,
   getConnection,
   removeConnection,
   getAllConnections,
-} = require('./connectionManager');
-const logger = require('./logger');
-const emitter = require('./eventEmitter');
+} = require('../utils/connectionManager');
+const logger = require('../config/logger');
+const emitter = require('../utils/eventEmitter');
 
 const handleMessage = async (ws, message) => {
   const parsedMessage = JSON.parse(message);

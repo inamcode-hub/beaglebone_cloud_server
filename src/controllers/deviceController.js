@@ -1,14 +1,9 @@
-// src/routes.js
-
-const express = require('express');
 const {
   sendReadDataRequest,
   sendUpdateRegisterRequest,
-} = require('./websocketHandler');
-const { getData, getAllConnections } = require('./connectionManager');
-const emitter = require('./eventEmitter');
-
-const router = express.Router();
+} = require('../websocket/websocketHandler');
+const { getData, getAllConnections } = require('../utils/connectionManager');
+const emitter = require('../utils/eventEmitter');
 
 const waitForData = (serialNumber) => {
   return new Promise((resolve, reject) => {
@@ -49,12 +44,12 @@ const waitForUpdateAck = (serialNumber, registerAddress, newValue) => {
   });
 };
 
-router.get('/connections', (req, res) => {
+const getConnections = (req, res) => {
   const connections = getAllConnections();
   res.json({ connections: Object.keys(connections) }); // send list of serial numbers
-});
+};
 
-router.post('/read-data', async (req, res) => {
+const readData = async (req, res) => {
   const { serialNumber } = req.body;
   if (serialNumber) {
     sendReadDataRequest(serialNumber);
@@ -67,9 +62,9 @@ router.post('/read-data', async (req, res) => {
   } else {
     res.status(400).json({ error: 'serialNumber is required' });
   }
-});
+};
 
-router.post('/update-register', async (req, res) => {
+const updateRegister = async (req, res) => {
   const { serialNumber, registerAddress, newValue } = req.body;
   if (serialNumber && registerAddress !== undefined && newValue !== undefined) {
     sendUpdateRegisterRequest(req.body);
@@ -88,6 +83,10 @@ router.post('/update-register', async (req, res) => {
       error: 'serialNumber, registerAddress, and newValue are required',
     });
   }
-});
+};
 
-module.exports = router;
+module.exports = {
+  getConnections,
+  readData,
+  updateRegister,
+};
