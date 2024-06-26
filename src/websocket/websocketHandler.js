@@ -12,62 +12,65 @@ const handleMessage = async (ws, message) => {
   const parsedMessage = JSON.parse(message);
 
   switch (parsedMessage.type) {
-    case 'DEVICE_HANDSHAKE':
+    case 'DEVICE_CONNECT':
       if (parsedMessage.serialNumber) {
-        logger.info(`Handshake received from: ${parsedMessage.serialNumber}`);
+        logger.info(`Device connected: ${parsedMessage.serialNumber}`);
         addConnection(parsedMessage.serialNumber, ws);
       } else {
-        logger.warn('Handshake received without serial number');
+        logger.warn('Device connect message received without serial number');
       }
       break;
-    case 'READ_DATA':
-      handleReadData(parsedMessage.serialNumber);
+    case 'REQUEST_SENSOR_DATA':
+      requestSensorData(parsedMessage.serialNumber);
       break;
-    case 'UPDATE_REGISTER':
-      handleUpdateRegister(parsedMessage);
+    case 'UPDATE_DEVICE_SETTINGS':
+      updateDeviceSettings(parsedMessage);
       break;
-    case 'DATA_RESPONSE':
-      handleDataResponse(parsedMessage);
+    case 'SENSOR_DATA_RESPONSE':
+      processSensorDataResponse(parsedMessage);
       break;
-    case 'UPDATE_ACK':
-      handleUpdateAck(parsedMessage);
+    case 'DEVICE_SETTINGS_UPDATE_ACK':
+      processDeviceSettingsUpdateAck(parsedMessage);
+      break;
+    case 'DEVICE_DISCONNECT':
+      handleDeviceDisconnection(parsedMessage.serialNumber);
       break;
     default:
       logger.warn(`Unknown message type: ${parsedMessage.type}`);
   }
 };
 
-const handleReadData = (serialNumber) => {
+const requestSensorData = (serialNumber) => {
   const ws = getConnection(serialNumber);
   if (ws) {
-    ws.send(JSON.stringify({ type: 'READ_DATA', serialNumber }));
-    logger.info(`Read data request sent to device ${serialNumber}`);
+    ws.send(JSON.stringify({ type: 'REQUEST_SENSOR_DATA', serialNumber }));
+    logger.info(`Data request sent to device ${serialNumber}`);
   } else {
     logger.error(`No connection found for device ${serialNumber}`);
   }
 };
 
-const handleUpdateRegister = (message) => {
+const updateDeviceSettings = (message) => {
   const { serialNumber, registerAddress, newValue } = message;
   const ws = getConnection(serialNumber);
   if (ws) {
     ws.send(
       JSON.stringify({
-        type: 'UPDATE_REGISTER',
+        type: 'UPDATE_DEVICE_SETTINGS',
         registerAddress,
         newValue,
         serialNumber,
       })
     );
     logger.info(
-      `Update register request sent to device ${serialNumber}: register ${registerAddress} to value ${newValue}`
+      `Settings update request sent to device ${serialNumber}: register ${registerAddress} to value ${newValue}`
     );
   } else {
     logger.error(`No connection found for device ${serialNumber}`);
   }
 };
 
-const handleDataResponse = (parsedMessage) => {
+const processSensorDataResponse = (parsedMessage) => {
   const { serialNumber, data } = parsedMessage;
   if (serialNumber) {
     storeData(serialNumber, data);
@@ -76,21 +79,37 @@ const handleDataResponse = (parsedMessage) => {
         data
       )}`
     );
-    emitter.emit('data_received', serialNumber); // Emit event when data is received
+    emitter.emit('sensor_data_received', serialNumber); // Emit event when data is received
   } else {
     logger.warn('Received data without serial number');
   }
 };
 
-const handleUpdateAck = (parsedMessage) => {
+const processDeviceSettingsUpdateAck = (parsedMessage) => {
   const { serialNumber, registerAddress, newValue } = parsedMessage;
   if (serialNumber) {
     logger.info(
       `Register ${registerAddress} updated to ${newValue} for device ${serialNumber}`
     );
-    emitter.emit('update_ack', { serialNumber, registerAddress, newValue }); // Emit event when update is acknowledged
+    emitter.emit('device_settings_update_ack', {
+      serialNumber,
+      registerAddress,
+      newValue,
+    }); // Emit event when update is acknowledged
   } else {
-    logger.warn('Update ACK received without serial number');
+    logger.warn('Settings update ACK received without serial number');
+  }
+};
+
+const handleDeviceDisconnection = (serialNumber) => {
+  const ws = getConnection(serialNumber);
+  if (ws) {
+    ws.close();
+    removeConnection(serialNumber);
+    logger.info(`Device disconnected: ${serialNumber}`);
+    emitter.emit('device_disconnected', serialNumber); // Emit event when device disconnects
+  } else {
+    logger.warn(`No connection found for device ${serialNumber}`);
   }
 };
 
@@ -99,6 +118,7 @@ const handleDisconnection = (ws) => {
   if (serialNumber) {
     removeConnection(serialNumber);
     logger.info(`Connection closed for device ${serialNumber}`);
+    emitter.emit('device_disconnected', serialNumber); // Emit event when device disconnects
   } else {
     logger.warn('Connection closed for unknown device');
   }
@@ -112,11 +132,10 @@ const getSerialNumberByWS = (ws) => {
 
 module.exports = {
   handleMessage,
-  handleReadData,
-  handleUpdateRegister,
-  handleDataResponse,
-  handleUpdateAck,
+  requestSensorData,
+  updateDeviceSettings,
+  processSensorDataResponse,
+  processDeviceSettingsUpdateAck,
   handleDisconnection,
-  sendReadDataRequest: handleReadData,
-  sendUpdateRegisterRequest: handleUpdateRegister,
+  handleDeviceDisconnection,
 };

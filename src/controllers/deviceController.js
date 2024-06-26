@@ -1,6 +1,6 @@
 const {
-  sendReadDataRequest,
-  sendUpdateRegisterRequest,
+  requestSensorData,
+  updateDeviceSettings,
 } = require('../websocket/websocketHandler');
 const { getData, getAllConnections } = require('../utils/connectionManager');
 const emitter = require('../utils/eventEmitter');
@@ -13,9 +13,9 @@ const waitForData = (serialNumber) => {
       reject(new Error('Timeout waiting for data'));
     }, 10000); // 10 seconds timeout, adjust as necessary
 
-    emitter.once('data_received', (receivedSerialNumber) => {
+    emitter.once('sensor_data_received', (receivedSerialNumber) => {
       logger.info(
-        `Event 'data_received' triggered for device ${receivedSerialNumber}`
+        `Event 'sensor_data_received' triggered for device ${receivedSerialNumber}`
       );
       if (receivedSerialNumber === serialNumber) {
         clearTimeout(timeout);
@@ -49,8 +49,10 @@ const waitForUpdateAck = (serialNumber, registerAddress, newValue) => {
       reject(new Error('Timeout waiting for update acknowledgment'));
     }, 10000); // 10 seconds timeout, adjust as necessary
 
-    emitter.once('update_ack', (ack) => {
-      logger.info(`Event 'update_ack' triggered for device ${serialNumber}`);
+    emitter.once('device_settings_update_ack', (ack) => {
+      logger.info(
+        `Event 'device_settings_update_ack' triggered for device ${serialNumber}`
+      );
       if (
         ack.serialNumber === serialNumber &&
         ack.registerAddress === registerAddress &&
@@ -72,7 +74,7 @@ const readData = async (req, res, next) => {
   const { serialNumber } = req.body;
   if (serialNumber) {
     logger.info(`Read data request received for device ${serialNumber}`);
-    sendReadDataRequest(serialNumber);
+    requestSensorData(serialNumber);
     try {
       const data = await waitForData(serialNumber);
       logger.info(
@@ -94,7 +96,7 @@ const updateRegister = async (req, res, next) => {
   const { serialNumber, registerAddress, newValue } = req.body;
   if (serialNumber && registerAddress !== undefined && newValue !== undefined) {
     logger.info(`Update register request received for device ${serialNumber}`);
-    sendUpdateRegisterRequest(req.body);
+    updateDeviceSettings(req.body);
     try {
       const ack = await waitForUpdateAck(
         serialNumber,
