@@ -50,7 +50,6 @@ const handleReadData = (serialNumber) => {
 const handleUpdateRegister = (message) => {
   const { serialNumber, registerAddress, newValue } = message;
   const ws = getConnection(serialNumber);
-  console.log(message);
   if (ws) {
     ws.send(
       JSON.stringify({
@@ -115,6 +114,8 @@ module.exports = {
   handleMessage,
   handleReadData,
   handleUpdateRegister,
+  handleDataResponse,
+  handleUpdateAck,
   handleDisconnection,
   sendReadDataRequest: handleReadData,
   sendUpdateRegisterRequest: handleUpdateRegister,

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Device Dashboard</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      #device-list {
+        list-style-type: none;
+        padding: 0;
+      }
+      #device-list li {
+        margin: 5px 0;
+        cursor: pointer;
+      }
+      #device-data {
+        margin-top: 20px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      table,
+      th,
+      td {
+        border: 1px solid black;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Online Devices</h1>
+    <ul id="device-list"></ul>
+    <div id="device-data"></div>
+    <script>
+      async function fetchDevices() {
+        try {
+          const response = await fetch('/api/devices/connections');
+          const data = await response.json();
+          const deviceList = document.getElementById('device-list');
+          deviceList.innerHTML = '';
+
+          data.connections.forEach((serialNumber) => {
+            const li = document.createElement('li');
+            li.textContent = serialNumber;
+            li.onclick = () => fetchDeviceData(serialNumber);
+            deviceList.appendChild(li);
+          });
+        } catch (error) {
+          console.error('Error fetching devices:', error);
+        }
+      }
+
+      async function fetchDeviceData(serialNumber) {
+        try {
+          const response = await fetch('/api/devices/read-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ serialNumber }),
+          });
+          const data = await response.json();
+          const deviceDataDiv = document.getElementById('device-data');
+
+          if (data.status === 'Data received') {
+            deviceDataDiv.innerHTML = `<h2>Data for ${serialNumber}</h2>${formatDeviceData(
+              data.data
+            )}`;
+          } else {
+            deviceDataDiv.innerHTML = `<h2>Error fetching data for ${serialNumber}</h2><p>${data.error.message}</p>`;
+          }
+        } catch (error) {
+          console.error('Error fetching device data:', error);
+        }
+      }
+
+      function formatDeviceData(deviceData) {
+        let table = '<table><tr><th>Tag Name</th><th>Value</th></tr>';
+        deviceData.forEach((item) => {
+          table += `<tr><td>${item.tagName}</td><td>${item.value}</td></tr>`;
+        });
+        table += '</table>';
+        return table;
+      }
+
+      document.addEventListener('DOMContentLoaded', fetchDevices);
+    </script>
+  </body>
+</html>

@@ -7,14 +7,22 @@ const {
   handleDisconnection,
 } = require('./websocket/websocketHandler');
 const logger = require('./config/logger');
+const loggerMiddleware = require('./middlewares/loggerMiddleware');
+const errorHandler = require('./middlewares/errorHandler');
+const path = require('path');
+const cors = require('cors');
 
 const startServer = () => {
   const app = express();
   const server = http.createServer(app);
   const wss = new WebSocket.Server({ server });
 
+  app.use(cors()); // Enable CORS
   app.use(express.json());
+  app.use(loggerMiddleware);
   app.use('/api', routes);
+  app.use(express.static(path.join(__dirname, '../public')));
+  app.use(errorHandler);
 
   wss.on('connection', (ws) => {
     logger.info('New WebSocket connection');
