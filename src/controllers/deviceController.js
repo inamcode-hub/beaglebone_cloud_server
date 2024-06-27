@@ -68,10 +68,6 @@ const getConnections = (req, res) => {
 
 const readData = async (req, res, next) => {
   const { serialNumber } = req.body;
-  if (!serialNumber) {
-    return res.status(400).json({ error: 'serialNumber is required' });
-  }
-
   logger.info(`Read data request received for device ${serialNumber}`);
 
   // Check if data is already available
@@ -106,30 +102,16 @@ const readData = async (req, res, next) => {
   } else {
     logger.info(`Request interval not met for device ${serialNumber}`);
     if (!existingData) {
-      res
-        .status(503)
-        .json({
-          status: 'Service Unavailable',
-          message: 'Request interval not met and no existing data',
-        });
+      res.status(503).json({
+        status: 'Service Unavailable',
+        message: 'Request interval not met and no existing data',
+      });
     }
   }
 };
 
 const updateRegister = async (req, res, next) => {
   const { serialNumber, registerAddress, newValue } = req.body;
-  if (
-    !serialNumber ||
-    registerAddress === undefined ||
-    newValue === undefined
-  ) {
-    return res
-      .status(400)
-      .json({
-        error: 'serialNumber, registerAddress, and newValue are required',
-      });
-  }
-
   logger.info(`Update register request received for device ${serialNumber}`);
   updateDeviceSettings(req.body);
 
