@@ -13,7 +13,6 @@ const handleMessage = async (ws, message) => {
 
   switch (parsedMessage.type) {
     case 'DEVICE_CONNECT':
-      console.log(parsedMessage);
       if (parsedMessage.data.serialNumber) {
         logger.info(`Device connected: ${parsedMessage.data.serialNumber}`);
         addConnection(parsedMessage.data.serialNumber, ws);
