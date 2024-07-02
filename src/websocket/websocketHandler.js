@@ -2,6 +2,7 @@ const {
   addConnection,
   storeData,
   getConnection,
+  getConnectionModel,
   removeConnection,
   getAllConnections,
 } = require('../utils/connectionManager');
@@ -17,7 +18,7 @@ const handleMessage = async (ws, message) => {
     case 'DEVICE_CONNECT':
       if (serialNumber) {
         logger.info(`Device connected: ${serialNumber} - ${model}`);
-        addConnection(serialNumber, ws);
+        addConnection(serialNumber, model, ws);
       } else {
         logger.warn('Device connect message received without serial number');
       }

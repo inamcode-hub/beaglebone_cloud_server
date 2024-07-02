@@ -4,14 +4,17 @@ let activeConnections = {};
 let dataStore = {};
 let lastRequestTime = {}; // Track the last request time for each device
 const DATA_TTL = 60000; // 1 minute TTL for data
-const REQUEST_INTERVAL = 100; // 5 seconds interval between requests
+const REQUEST_INTERVAL = 100; // 100 milliseconds interval between requests
 
-const addConnection = (serialNumber, ws) => {
-  activeConnections[serialNumber] = ws;
-  logger.info(`Connection added for device ${serialNumber}`);
+const addConnection = (serialNumber, model, ws) => {
+  activeConnections[serialNumber] = { model, ws };
+  logger.info(`Connection added for device ${serialNumber}, model: ${model}`);
 };
 
-const getConnection = (serialNumber) => activeConnections[serialNumber];
+const getConnection = (serialNumber) => activeConnections[serialNumber]?.ws;
+
+const getConnectionModel = (serialNumber) =>
+  activeConnections[serialNumber]?.model;
 
 const removeConnection = (serialNumber) => {
   if (activeConnections[serialNumber]) {
@@ -69,6 +72,7 @@ setInterval(() => {
 module.exports = {
   addConnection,
   getConnection,
+  getConnectionModel,
   removeConnection,
   getAllConnections,
   storeData,
