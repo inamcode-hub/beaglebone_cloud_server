@@ -4,7 +4,7 @@ let activeConnections = {};
 let dataStore = {};
 let lastRequestTime = {}; // Track the last request time for each device
 const DATA_TTL = 60000; // 1 minute TTL for data
-const REQUEST_INTERVAL = 5000; // 5 seconds interval between requests
+const REQUEST_INTERVAL = 100; // 5 seconds interval between requests
 
 const addConnection = (serialNumber, ws) => {
   activeConnections[serialNumber] = ws;

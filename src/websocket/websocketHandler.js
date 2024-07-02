@@ -13,15 +13,16 @@ const handleMessage = async (ws, message) => {
 
   switch (parsedMessage.type) {
     case 'DEVICE_CONNECT':
-      if (parsedMessage.serialNumber) {
-        logger.info(`Device connected: ${parsedMessage.serialNumber}`);
-        addConnection(parsedMessage.serialNumber, ws);
+      console.log(parsedMessage);
+      if (parsedMessage.data.serialNumber) {
+        logger.info(`Device connected: ${parsedMessage.data.serialNumber}`);
+        addConnection(parsedMessage.data.serialNumber, ws);
       } else {
         logger.warn('Device connect message received without serial number');
       }
       break;
     case 'REQUEST_SENSOR_DATA':
-      requestSensorData(parsedMessage.serialNumber);
+      requestSensorData(parsedMessage.data.serialNumber);
       break;
     case 'UPDATE_DEVICE_SETTINGS':
       updateDeviceSettings(parsedMessage);
@@ -33,7 +34,7 @@ const handleMessage = async (ws, message) => {
       processDeviceSettingsUpdateAck(parsedMessage);
       break;
     case 'DEVICE_DISCONNECT':
-      handleDeviceDisconnection(parsedMessage.serialNumber);
+      handleDeviceDisconnection(parsedMessage.data.serialNumber);
       break;
     default:
       logger.warn(`Unknown message type: ${parsedMessage.type}`);
@@ -71,7 +72,7 @@ const updateDeviceSettings = (message) => {
 };
 
 const processSensorDataResponse = (parsedMessage) => {
-  const { serialNumber, data } = parsedMessage;
+  const { serialNumber, data } = parsedMessage.data;
   if (serialNumber) {
     storeData(serialNumber, data);
     logger.info(
@@ -86,7 +87,7 @@ const processSensorDataResponse = (parsedMessage) => {
 };
 
 const processDeviceSettingsUpdateAck = (parsedMessage) => {
-  const { serialNumber, registerAddress, newValue } = parsedMessage;
+  const { serialNumber, registerAddress, newValue } = parsedMessage.data;
   if (serialNumber) {
     logger.info(
       `Register ${registerAddress} updated to ${newValue} for device ${serialNumber}`
