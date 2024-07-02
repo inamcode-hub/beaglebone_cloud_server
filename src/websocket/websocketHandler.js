@@ -10,18 +10,20 @@ const emitter = require('../utils/eventEmitter');
 
 const handleMessage = async (ws, message) => {
   const parsedMessage = JSON.parse(message);
+  const serialNumber = parsedMessage.data.serialNumber;
+  const model = parsedMessage.data.model;
 
   switch (parsedMessage.type) {
     case 'DEVICE_CONNECT':
-      if (parsedMessage.data.serialNumber) {
-        logger.info(`Device connected: ${parsedMessage.data.serialNumber}`);
-        addConnection(parsedMessage.data.serialNumber, ws);
+      if (serialNumber) {
+        logger.info(`Device connected: ${serialNumber} - ${model}`);
+        addConnection(serialNumber, ws);
       } else {
         logger.warn('Device connect message received without serial number');
       }
       break;
     case 'REQUEST_SENSOR_DATA':
-      requestSensorData(parsedMessage.data.serialNumber);
+      requestSensorData(serialNumber);
       break;
     case 'UPDATE_DEVICE_SETTINGS':
       updateDeviceSettings(parsedMessage);
@@ -33,7 +35,7 @@ const handleMessage = async (ws, message) => {
       processDeviceSettingsUpdateAck(parsedMessage);
       break;
     case 'DEVICE_DISCONNECT':
-      handleDeviceDisconnection(parsedMessage.data.serialNumber);
+      handleDeviceDisconnection(serialNumber);
       break;
     default:
       logger.warn(`Unknown message type: ${parsedMessage.type}`);
