@@ -11,9 +11,21 @@ const emitter = require('../utils/eventEmitter');
 
 const handleMessage = async (ws, message) => {
   const parsedMessage = JSON.parse(message);
-  const serialNumber = parsedMessage.data.serialNumber;
-  const model = parsedMessage.data.model;
+  const serialNumber = parsedMessage?.data?.serialNumber;
 
+  // =========== Validate message and serial number before processing ===========
+
+  if (!serialNumber) {
+    logger.warn('Message received without serial number');
+    return;
+  }
+  const model = parsedMessage?.data?.model;
+  if (!model) {
+    logger.warn('Message received without model');
+    return;
+  }
+
+  // =========== Process message based on type ===========
   switch (parsedMessage.type) {
     case 'DEVICE_CONNECT':
       if (serialNumber) {
