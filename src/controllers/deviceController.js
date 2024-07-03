@@ -113,6 +113,7 @@ const readData = async (req, res, next) => {
 const updateRegister = async (req, res, next) => {
   const { serialNumber, registerAddress, newValue } = req.body;
   logger.info(`Update register request received for device ${serialNumber}`);
+  console.log(req.body);
   updateDeviceSettings(req.body);
 
   try {
@@ -120,7 +121,7 @@ const updateRegister = async (req, res, next) => {
     logger.info(
       `Register updated for device ${serialNumber}: ${JSON.stringify(ack)}`
     );
-    res.json({ status: 'Register updated', ack });
+    res.json({ status: 'success', data: ack });
   } catch (error) {
     logger.error(
       `Error updating register for device ${serialNumber}: ${error.message}`
