@@ -1,8 +1,7 @@
 const chokidar = require('chokidar');
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
-const scp2 = require('scp2');
+const { execSync, exec } = require('child_process');
 
 // Local and remote paths
 const localPath = path.resolve(__dirname, '..');
@@ -25,6 +24,11 @@ function getChangedFiles() {
   }
 }
 
+// Helper function to format paths correctly for SCP
+function formatPath(p) {
+  return p.replace(/\\/g, '/');
+}
+
 function transferFiles() {
   try {
     // Get list of changed files
@@ -39,33 +43,29 @@ function transferFiles() {
 
     // Upload changed files
     changedFiles.forEach((file) => {
-      const localFile = path.join(localPath, file);
+      const localFile = formatPath(path.join(localPath, file));
       if (fs.existsSync(localFile)) {
-        const remoteFile = path.join(remotePath, file);
-        scp2.scp(
-          localFile,
-          {
-            host: '3.96.121.119', // Replace with your EC2 instance public IP
-            username: 'ubuntu', // Replace with your EC2 instance username
-            privateKey: fs.readFileSync(privateKeyPath, 'utf8'),
-            path: remoteFile,
-          },
-          (err) => {
-            if (err) {
-              console.error(`Error transferring ${localFile}:`, err);
-            } else {
-              console.log(`Transferred ${localFile} to ${remoteFile}`);
-            }
+        const remoteFile = formatPath(path.join(remotePath, file));
+        console.log(`Preparing to transfer ${localFile} to ${remoteFile}`);
+
+        const scpCommand = `scp -i "${privateKeyPath}" "${localFile}" ubuntu@3.96.121.119:"${remoteFile}"`;
+        exec(scpCommand, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error transferring ${localFile}: ${stderr}`);
+          } else {
+            console.log(
+              `Successfully transferred ${localFile} to ${remoteFile}`
+            );
           }
-        );
+        });
       } else {
         console.warn(`File does not exist: ${localFile}`);
       }
     });
 
-    console.log('Files transferred successfully.');
+    console.log('File transfer process completed.');
   } catch (err) {
-    console.error('Error transferring files:', err);
+    console.error('Error during file transfer:', err);
   }
 }
 
@@ -78,7 +78,7 @@ function startWatcher() {
   });
 
   watcher.on('change', (filePath) => {
-    console.log(`File changed: ${filePath}`);
+    console.log(`File changed: ${formatPath(filePath)}`);
     transferFiles();
   });
 
