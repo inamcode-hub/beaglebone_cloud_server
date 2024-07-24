@@ -5,6 +5,7 @@ const {
   getConnectionModel,
   removeConnection,
   getAllConnections,
+  handlePing, // Import handlePing
 } = require('../utils/connectionManager');
 const logger = require('../config/logger');
 const emitter = require('../utils/eventEmitter');
@@ -49,6 +50,9 @@ const handleMessage = async (ws, message) => {
       break;
     case 'DEVICE_DISCONNECT':
       handleDeviceDisconnection(serialNumber);
+      break;
+    case 'PING':
+      handlePing(serialNumber, model, ws);
       break;
     default:
       logger.warn(`Unknown message type: ${parsedMessage.type}`);

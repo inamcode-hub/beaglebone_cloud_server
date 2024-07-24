@@ -5,9 +5,10 @@ let dataStore = {};
 let lastRequestTime = {}; // Track the last request time for each device
 const DATA_TTL = 60000; // 1 minute TTL for data
 const REQUEST_INTERVAL = 100; // 100 milliseconds interval between requests
+const PING_TIMEOUT = 30000; // 30 seconds timeout for PING
 
 const addConnection = (serialNumber, model, ws) => {
-  activeConnections[serialNumber] = { model, ws };
+  activeConnections[serialNumber] = { model, ws, lastPingTime: Date.now() };
   logger.info(`Connection added for device ${serialNumber}, model: ${model}`);
 };
 
@@ -58,6 +59,26 @@ const shouldRequestData = (serialNumber) => {
   return false;
 };
 
+const handlePing = (serialNumber, model, ws) => {
+  if (serialNumber && model) {
+    logger.info(`Received PING from device ${serialNumber} - ${model}`);
+    if (activeConnections[serialNumber]) {
+      activeConnections[serialNumber].lastPingTime = Date.now(); // Update the lastPingTime
+      ws.send(
+        JSON.stringify({
+          type: 'PONG',
+          data: { serialNumber: serialNumber, model: model },
+        })
+      );
+      logger.info(`Sent PONG to device ${serialNumber} - ${model}`);
+    } else {
+      logger.warn(`No active connection found for device ${serialNumber}`);
+    }
+  } else {
+    logger.warn('PING message received without valid serial number or model');
+  }
+};
+
 // Periodic cleanup function
 setInterval(() => {
   const now = Date.now();
@@ -67,7 +88,15 @@ setInterval(() => {
       delete dataStore[serialNumber];
     }
   }
-}, DATA_TTL / 2); // Run cleanup twice per TTL duration
+  for (const serialNumber in activeConnections) {
+    if (now - activeConnections[serialNumber].lastPingTime >= PING_TIMEOUT) {
+      logger.warn(
+        `No PING received from device ${serialNumber} within timeout period. Removing connection.`
+      );
+      removeConnection(serialNumber);
+    }
+  }
+}, PING_TIMEOUT / 2); // Run cleanup twice per PING_TIMEOUT duration
 
 module.exports = {
   addConnection,
@@ -78,4 +107,5 @@ module.exports = {
   storeData,
   getData,
   shouldRequestData,
+  handlePing, // Export handlePing
 };
