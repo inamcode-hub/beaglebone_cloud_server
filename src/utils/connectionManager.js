@@ -1,4 +1,5 @@
 const logger = require('../config/logger');
+const MESSAGE_TYPES = require('../websocket/constants/messageTypes'); // Correct import path
 
 let activeConnections = {};
 let dataStore = {};
@@ -66,7 +67,7 @@ const handlePing = (serialNumber, model, ws) => {
       activeConnections[serialNumber].lastPingTime = Date.now(); // Update the lastPingTime
       ws.send(
         JSON.stringify({
-          type: 'PONG',
+          type: MESSAGE_TYPES.PONG,
           data: { serialNumber: serialNumber, model: model },
         })
       );

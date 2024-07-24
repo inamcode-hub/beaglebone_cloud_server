@@ -9,6 +9,7 @@ const {
 } = require('../utils/connectionManager');
 const logger = require('../config/logger');
 const emitter = require('../utils/eventEmitter');
+const MESSAGE_TYPES = require('../websocket/constants/messageTypes'); // Correct import path
 
 const handleMessage = async (ws, message) => {
   const parsedMessage = JSON.parse(message);
@@ -28,7 +29,7 @@ const handleMessage = async (ws, message) => {
 
   // =========== Process message based on type ===========
   switch (parsedMessage.type) {
-    case 'DEVICE_CONNECT':
+    case MESSAGE_TYPES.DEVICE_CONNECT:
       if (serialNumber) {
         logger.info(`Device connected: ${serialNumber} - ${model}`);
         addConnection(serialNumber, model, ws);
@@ -36,22 +37,22 @@ const handleMessage = async (ws, message) => {
         logger.warn('Device connect message received without serial number');
       }
       break;
-    case 'REQUEST_SENSOR_DATA':
+    case MESSAGE_TYPES.REQUEST_SENSOR_DATA:
       requestSensorData(serialNumber);
       break;
-    case 'UPDATE_DEVICE_SETTINGS':
+    case MESSAGE_TYPES.UPDATE_DEVICE_SETTINGS:
       updateDeviceSettings(parsedMessage);
       break;
-    case 'SENSOR_DATA_RESPONSE':
+    case MESSAGE_TYPES.SENSOR_DATA_RESPONSE:
       processSensorDataResponse(parsedMessage);
       break;
-    case 'DEVICE_SETTINGS_UPDATE_ACK':
+    case MESSAGE_TYPES.DEVICE_SETTINGS_UPDATE_ACK:
       processDeviceSettingsUpdateAck(parsedMessage);
       break;
-    case 'DEVICE_DISCONNECT':
+    case MESSAGE_TYPES.DEVICE_DISCONNECT:
       handleDeviceDisconnection(serialNumber);
       break;
-    case 'PING':
+    case MESSAGE_TYPES.PING:
       handlePing(serialNumber, model, ws);
       break;
     default:
@@ -62,7 +63,9 @@ const handleMessage = async (ws, message) => {
 const requestSensorData = (serialNumber) => {
   const ws = getConnection(serialNumber);
   if (ws) {
-    ws.send(JSON.stringify({ type: 'REQUEST_SENSOR_DATA', serialNumber }));
+    ws.send(
+      JSON.stringify({ type: MESSAGE_TYPES.REQUEST_SENSOR_DATA, serialNumber })
+    );
     logger.info(`Data request sent to device ${serialNumber}`);
   } else {
     logger.error(`No connection found for device ${serialNumber}`);
@@ -75,7 +78,7 @@ const updateDeviceSettings = (message) => {
   if (ws) {
     ws.send(
       JSON.stringify({
-        type: 'UPDATE_DEVICE_SETTINGS',
+        type: MESSAGE_TYPES.UPDATE_DEVICE_SETTINGS,
         registerAddress,
         newValue,
         serialNumber,
