@@ -5,15 +5,16 @@ const {
   getConnectionModel,
   removeConnection,
   getAllConnections,
-  handlePing, // Import handlePing
+  handlePing,
 } = require('../utils/connectionManager');
 const logger = require('../config/logger');
 const emitter = require('../utils/eventEmitter');
-const MESSAGE_TYPES = require('../websocket/constants/messageTypes'); // Correct import path
-
+const MESSAGE_TYPES = require('../websocket/constants/messageTypes');
 const handleMessage = async (ws, message) => {
   const parsedMessage = JSON.parse(message);
   const serialNumber = parsedMessage?.data?.serialNumber;
+  const model = parsedMessage?.data?.model;
+  const ipAddress = parsedMessage?.data?.ipAddress;
 
   // =========== Validate message and serial number before processing ===========
 
@@ -21,7 +22,6 @@ const handleMessage = async (ws, message) => {
     logger.warn('Message received without serial number');
     return;
   }
-  const model = parsedMessage?.data?.model;
   if (!model) {
     logger.warn('Message received without model');
     return;
@@ -31,8 +31,10 @@ const handleMessage = async (ws, message) => {
   switch (parsedMessage.type) {
     case MESSAGE_TYPES.DEVICE_CONNECT:
       if (serialNumber) {
-        logger.info(`Device connected: ${serialNumber} - ${model}`);
-        addConnection(serialNumber, model, ws);
+        logger.info(
+          `Device connected: serial number ${serialNumber}, model ${model}, IP address ${ipAddress}`
+        );
+        addConnection(serialNumber, model, ipAddress, ws);
       } else {
         logger.warn('Device connect message received without serial number');
       }

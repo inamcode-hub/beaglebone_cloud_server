@@ -8,9 +8,16 @@ const DATA_TTL = 60000; // 1 minute TTL for data
 const REQUEST_INTERVAL = 100; // 100 milliseconds interval between requests
 const PING_TIMEOUT = 30000; // 30 seconds timeout for PING
 
-const addConnection = (serialNumber, model, ws) => {
-  activeConnections[serialNumber] = { model, ws, lastPingTime: Date.now() };
-  logger.info(`Connection added for device ${serialNumber}, model: ${model}`);
+const addConnection = (serialNumber, model, ipAddress, ws) => {
+  activeConnections[serialNumber] = {
+    model,
+    ipAddress,
+    ws,
+    lastPingTime: Date.now(),
+  };
+  logger.info(
+    `Connection added for device ${serialNumber}, model: ${model} and IP address: ${ipAddress}`
+  );
 };
 
 const getConnection = (serialNumber) => activeConnections[serialNumber]?.ws;
