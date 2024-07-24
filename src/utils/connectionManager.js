@@ -9,6 +9,12 @@ const REQUEST_INTERVAL = 100; // 100 milliseconds interval between requests
 const PING_TIMEOUT = 30000; // 30 seconds timeout for PING
 
 const addConnection = (serialNumber, model, ipAddress, ws) => {
+  if (activeConnections[serialNumber]) {
+    logger.warn(
+      `Connection already exists for device ${serialNumber}. Removing old connection.`
+    );
+    removeConnection(serialNumber);
+  }
   activeConnections[serialNumber] = {
     model,
     ipAddress,
