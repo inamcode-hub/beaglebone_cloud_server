@@ -15,6 +15,7 @@ const handleMessage = async (ws, message) => {
   const serialNumber = parsedMessage?.data?.serialNumber;
   const model = parsedMessage?.data?.model;
   const ipAddress = parsedMessage?.data?.ipAddress;
+  const publicIpAddress = parsedMessage?.data?.publicIpAddress;
 
   // =========== Validate message and serial number before processing ===========
 
@@ -32,9 +33,9 @@ const handleMessage = async (ws, message) => {
     case MESSAGE_TYPES.DEVICE_CONNECT:
       if (serialNumber) {
         logger.info(
-          `Device connected: serial number ${serialNumber}, model ${model}, IP address ${ipAddress}`
+          `Device connected: serial number ${serialNumber}, model ${model}, IP address ${ipAddress} and public IP address ${publicIpAddress}`
         );
-        addConnection(serialNumber, model, ipAddress, ws);
+        addConnection(serialNumber, model, ipAddress, publicIpAddress, ws);
       } else {
         logger.warn('Device connect message received without serial number');
       }
