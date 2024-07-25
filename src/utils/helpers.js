@@ -1,16 +1,13 @@
 const logger = require('../config/logger');
 
 const checkAndLogMissingFields = (data, ws) => {
-  const { serialNumber, model, ipAddress, publicIpAddress } = data;
+  const { serialNumber, model, publicIpAddress } = data;
   const missingFields = [];
   if (!serialNumber) {
     missingFields.push('serial number');
   }
   if (!model) {
     missingFields.push('model');
-  }
-  if (!ipAddress) {
-    missingFields.push('IP address');
   }
   if (!publicIpAddress) {
     missingFields.push('public IP address');
