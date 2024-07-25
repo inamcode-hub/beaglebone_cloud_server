@@ -18,18 +18,14 @@ const handleMessage = async (ws, message) => {
     const parsedMessage = JSON.parse(message);
     const { serialNumber, model, ipAddress, publicIpAddress } =
       parsedMessage.data || {};
+
+    // Log missing fields in the message and close the connection if serial number is missing
     checkAndLogMissingFields(parsedMessage.data || {}, ws);
 
     // Process message based on type
     switch (parsedMessage.type) {
       case MESSAGE_TYPES.DEVICE_CONNECT:
-        handleDeviceConnect(
-          serialNumber,
-          model,
-          ipAddress,
-          publicIpAddress,
-          ws
-        );
+        addConnection(serialNumber, model, ipAddress, ws);
         break;
       case MESSAGE_TYPES.REQUEST_SENSOR_DATA:
         requestSensorData(serialNumber);
@@ -54,26 +50,6 @@ const handleMessage = async (ws, message) => {
     }
   } catch (error) {
     logger.error(`Error handling message: ${error.message}`);
-  }
-};
-
-const handleDeviceConnect = (
-  serialNumber,
-  model,
-  ipAddress,
-  publicIpAddress,
-  ws
-) => {
-  try {
-    if (!serialNumber) {
-      serialNumber = publicIpAddress || ipAddress;
-      logger.warn(
-        `No serial number provided. Using IP address as serial number: ${serialNumber}`
-      );
-    }
-    addConnection(serialNumber, model, ipAddress, publicIpAddress, ws);
-  } catch (error) {
-    logger.error(`Error connecting device: ${error.message}`);
   }
 };
 

@@ -23,8 +23,8 @@ const checkAndLogMissingFields = (data, ws) => {
       )}. Received data: ${JSON.stringify(data)}`
     );
   }
-  // if there is no serial number or public IP address or local IP address, close the connection
-  if (!serialNumber || !publicIpAddress || !ipAddress) {
+  // If the serial number is missing, close the WebSocket connection
+  if (!serialNumber) {
     ws.close();
   }
 };
