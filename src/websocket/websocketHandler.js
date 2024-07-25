@@ -1,3 +1,4 @@
+const WebSocket = require('ws');
 const {
   addConnection,
   storeData,
@@ -10,93 +11,121 @@ const {
 const logger = require('../config/logger');
 const emitter = require('../utils/eventEmitter');
 const MESSAGE_TYPES = require('../websocket/constants/messageTypes');
+const { checkAndLogMissingFields } = require('../utils/helpers');
+
 const handleMessage = async (ws, message) => {
-  const parsedMessage = JSON.parse(message);
-  const serialNumber = parsedMessage?.data?.serialNumber;
-  const model = parsedMessage?.data?.model;
-  const ipAddress = parsedMessage?.data?.ipAddress;
-  const publicIpAddress = parsedMessage?.data?.publicIpAddress;
+  try {
+    const parsedMessage = JSON.parse(message);
+    const { serialNumber, model, ipAddress, publicIpAddress } =
+      parsedMessage.data || {};
+    checkAndLogMissingFields(parsedMessage.data || {}, ws);
 
-  // =========== Validate message and serial number before processing ===========
-
-  if (!serialNumber) {
-    logger.warn('Message received without serial number');
-    return;
-  }
-  if (!model) {
-    logger.warn('Message received without model');
-    return;
-  }
-
-  // =========== Process message based on type ===========
-  switch (parsedMessage.type) {
-    case MESSAGE_TYPES.DEVICE_CONNECT:
-      if (serialNumber) {
-        logger.info(
-          `Device connected: serial number ${serialNumber}, model ${model}, IP address ${ipAddress} and public IP address ${publicIpAddress}`
+    // Process message based on type
+    switch (parsedMessage.type) {
+      case MESSAGE_TYPES.DEVICE_CONNECT:
+        handleDeviceConnect(
+          serialNumber,
+          model,
+          ipAddress,
+          publicIpAddress,
+          ws
         );
-        addConnection(serialNumber, model, ipAddress, publicIpAddress, ws);
-      } else {
-        logger.warn('Device connect message received without serial number');
-      }
-      break;
-    case MESSAGE_TYPES.REQUEST_SENSOR_DATA:
-      requestSensorData(serialNumber);
-      break;
-    case MESSAGE_TYPES.UPDATE_DEVICE_SETTINGS:
-      updateDeviceSettings(parsedMessage);
-      break;
-    case MESSAGE_TYPES.SENSOR_DATA_RESPONSE:
-      processSensorDataResponse(parsedMessage);
-      break;
-    case MESSAGE_TYPES.DEVICE_SETTINGS_UPDATE_ACK:
-      processDeviceSettingsUpdateAck(parsedMessage);
-      break;
-    case MESSAGE_TYPES.DEVICE_DISCONNECT:
-      handleDeviceDisconnection(serialNumber);
-      break;
-    case MESSAGE_TYPES.PING:
-      handlePing(serialNumber, model, ws);
-      break;
-    default:
-      logger.warn(`Unknown message type: ${parsedMessage.type}`);
+        break;
+      case MESSAGE_TYPES.REQUEST_SENSOR_DATA:
+        requestSensorData(serialNumber);
+        break;
+      case MESSAGE_TYPES.UPDATE_DEVICE_SETTINGS:
+        updateDeviceSettings(parsedMessage);
+        break;
+      case MESSAGE_TYPES.SENSOR_DATA_RESPONSE:
+        processSensorDataResponse(parsedMessage);
+        break;
+      case MESSAGE_TYPES.DEVICE_SETTINGS_UPDATE_ACK:
+        processDeviceSettingsUpdateAck(parsedMessage);
+        break;
+      case MESSAGE_TYPES.DEVICE_DISCONNECT:
+        handleDeviceDisconnection(serialNumber);
+        break;
+      case MESSAGE_TYPES.PING:
+        handlePing(serialNumber, model, ws);
+        break;
+      default:
+        logger.warn(`Unknown message type: ${parsedMessage.type}`);
+    }
+  } catch (error) {
+    logger.error(`Error handling message: ${error.message}`);
+  }
+};
+
+const handleDeviceConnect = (
+  serialNumber,
+  model,
+  ipAddress,
+  publicIpAddress,
+  ws
+) => {
+  try {
+    if (!serialNumber) {
+      serialNumber = publicIpAddress || ipAddress;
+      logger.warn(
+        `No serial number provided. Using IP address as serial number: ${serialNumber}`
+      );
+    }
+    addConnection(serialNumber, model, ipAddress, publicIpAddress, ws);
+  } catch (error) {
+    logger.error(`Error connecting device: ${error.message}`);
   }
 };
 
 const requestSensorData = (serialNumber) => {
-  const ws = getConnection(serialNumber);
-  if (ws) {
-    ws.send(
-      JSON.stringify({ type: MESSAGE_TYPES.REQUEST_SENSOR_DATA, serialNumber })
+  try {
+    const ws = getConnection(serialNumber);
+    if (ws) {
+      ws.send(
+        JSON.stringify({
+          type: MESSAGE_TYPES.REQUEST_SENSOR_DATA,
+          serialNumber,
+        })
+      );
+      logger.info(`Data request sent to device ${serialNumber}`);
+    } else {
+      logger.error(`No connection found for device ${serialNumber}`);
+    }
+  } catch (error) {
+    logger.error(
+      `Error requesting sensor data for device ${serialNumber}: ${error.message}`
     );
-    logger.info(`Data request sent to device ${serialNumber}`);
-  } else {
-    logger.error(`No connection found for device ${serialNumber}`);
   }
 };
 
 const updateDeviceSettings = (message) => {
   const { serialNumber, registerAddress, newValue } = message;
-  const ws = getConnection(serialNumber);
-  if (ws) {
-    ws.send(
-      JSON.stringify({
-        type: MESSAGE_TYPES.UPDATE_DEVICE_SETTINGS,
-        registerAddress,
-        newValue,
-        serialNumber,
-      })
+  try {
+    const ws = getConnection(serialNumber);
+    if (ws) {
+      ws.send(
+        JSON.stringify({
+          type: MESSAGE_TYPES.UPDATE_DEVICE_SETTINGS,
+          registerAddress,
+          newValue,
+          serialNumber,
+        })
+      );
+      logger.info(
+        `Settings update request sent to device ${serialNumber}: register ${registerAddress} to value ${newValue}`
+      );
+    } else {
+      logger.error(`No connection found for device ${serialNumber}`);
+    }
+  } catch (error) {
+    logger.error(
+      `Error updating settings for device ${serialNumber}: ${error.message}`
     );
-    logger.info(
-      `Settings update request sent to device ${serialNumber}: register ${registerAddress} to value ${newValue}`
-    );
-  } else {
-    logger.error(`No connection found for device ${serialNumber}`);
   }
 };
 
 const processSensorDataResponse = (parsedMessage) => {
-  const { serialNumber, data } = parsedMessage.data;
+  const { serialNumber, data } = parsedMessage.data || {};
   if (serialNumber) {
     storeData(serialNumber, data);
     logger.info(
@@ -111,7 +140,7 @@ const processSensorDataResponse = (parsedMessage) => {
 };
 
 const processDeviceSettingsUpdateAck = (parsedMessage) => {
-  const { serialNumber, registerAddress, newValue } = parsedMessage.data;
+  const { serialNumber, registerAddress, newValue } = parsedMessage.data || {};
   if (serialNumber) {
     logger.info(
       `Register ${registerAddress} updated to ${newValue} for device ${serialNumber}`
@@ -127,14 +156,20 @@ const processDeviceSettingsUpdateAck = (parsedMessage) => {
 };
 
 const handleDeviceDisconnection = (serialNumber) => {
-  const ws = getConnection(serialNumber);
-  if (ws) {
-    ws.close();
-    removeConnection(serialNumber);
-    logger.info(`Device disconnected: ${serialNumber}`);
-    emitter.emit('device_disconnected', serialNumber); // Emit event when device disconnects
-  } else {
-    logger.warn(`No connection found for device ${serialNumber}`);
+  try {
+    const ws = getConnection(serialNumber);
+    if (ws) {
+      ws.close();
+      removeConnection(serialNumber);
+      logger.info(`Device disconnected: ${serialNumber}`);
+      emitter.emit('device_disconnected', serialNumber); // Emit event when device disconnects
+    } else {
+      logger.warn(`No connection found for device ${serialNumber}`);
+    }
+  } catch (error) {
+    logger.error(
+      `Error handling disconnection for device ${serialNumber}: ${error.message}`
+    );
   }
 };
 
@@ -155,6 +190,28 @@ const getSerialNumberByWS = (ws) => {
   );
 };
 
+// Set up WebSocket server
+const setupWebSocketServer = (server) => {
+  const wss = new WebSocket.Server({ server });
+
+  wss.on('connection', (ws) => {
+    logger.info('New WebSocket connection');
+
+    ws.on('message', (message) => {
+      handleMessage(ws, message);
+    });
+
+    ws.on('close', () => {
+      handleDisconnection(ws);
+    });
+
+    ws.on('error', (error) => {
+      logger.error(`WebSocket error: ${error.message}`);
+      handleDisconnection(ws);
+    });
+  });
+};
+
 module.exports = {
   handleMessage,
   requestSensorData,
@@ -163,4 +220,5 @@ module.exports = {
   processDeviceSettingsUpdateAck,
   handleDisconnection,
   handleDeviceDisconnection,
+  setupWebSocketServer,
 };
