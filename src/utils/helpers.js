@@ -1,7 +1,8 @@
 const logger = require('../config/logger');
 
 const checkAndLogMissingFields = (data, ws) => {
-  const { serialNumber, model, publicIpAddress } = data;
+  const { serialNumber, model, publicIpAddress, beagleboneSerialNumber } = data;
+  console.log(data);
   const missingFields = [];
   if (!serialNumber) {
     missingFields.push('serial number');
@@ -21,7 +22,10 @@ const checkAndLogMissingFields = (data, ws) => {
     );
   }
   // If the serial number is missing, close the WebSocket connection
-  if (!serialNumber) {
+  if (!beagleboneSerialNumber) {
+    logger.warn(
+      'Closing connection because Beaglebone serial number is missing'
+    );
     ws.close();
   }
 };
