@@ -62,8 +62,37 @@ const waitForUpdateAck = (serialNumber, registerAddress, newValue) => {
 };
 
 const getConnections = (req, res) => {
-  const connections = getAllConnections();
-  res.json({ connections: Object.keys(connections) }); // send list of serial numbers
+  try {
+    const connections = getAllConnections();
+    const connectionDetails = Object.values(connections).map((connection) => {
+      const { data, lastPingTime, connectedAt } = connection;
+      return {
+        serialNumber: data.serialNumber ?? 'N/A',
+        model: data.model ?? 'N/A',
+        ipAddress: data.ipAddress ?? 'N/A',
+        publicIpAddress: data.publicIpAddress ?? 'N/A',
+        beagleboneSerialNumber: data.beagleboneSerialNumber ?? 'N/A',
+        deviceStatus: data.deviceStatus ?? 'N/A',
+        uptime: data.uptime ?? 0,
+        cpuUsage: data.cpuUsage ?? [],
+        memoryUsage: data.memoryUsage ?? {},
+        diskUsage: data.diskUsage ?? {},
+        networkInterfaces: data.networkInterfaces ?? {},
+        runningProcesses: data.runningProcesses ?? 0,
+        firmwareVersion: data.firmwareVersion ?? 'N/A',
+        lastPingTime: lastPingTime ?? 'N/A',
+        connectedAt: connectedAt ?? 'N/A',
+      };
+    });
+
+    res.json({
+      totalConnections: connectionDetails.length,
+      connections: connectionDetails,
+    });
+  } catch (error) {
+    logger.error(`Failed to get connections: ${error.message}`);
+    res.status(500).json({ error: 'Failed to get connections' });
+  }
 };
 
 const readData = async (req, res, next) => {
