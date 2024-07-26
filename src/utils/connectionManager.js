@@ -8,21 +8,28 @@ const DATA_TTL = 60000; // 1 minute TTL for data
 const REQUEST_INTERVAL = 100; // 100 milliseconds interval between requests
 const PING_TIMEOUT = 30000; // 30 seconds timeout for PING
 
-const addConnection = (serialNumber, model, ipAddress, ws) => {
+const addConnection = (data, ws) => {
+  const { serialNumber, model, ipAddress } = data;
+
+  // Check if the serial number already has an active connection
   if (activeConnections[serialNumber]) {
-    logger.warn(
-      `Connection already exists for device ${serialNumber}. Removing old connection.`
-    );
-    removeConnection(serialNumber);
+    // Log a warning and close the new incoming connection
+    logger.warn(`Connection already exists for device ${serialNumber}`);
+    ws.close();
+    return;
   }
+
+  // Add the new connection to the active connections
   activeConnections[serialNumber] = {
-    model,
-    ipAddress,
+    data,
     ws,
     lastPingTime: Date.now(),
+    connectedAt: new Date().toISOString(),
   };
+
+  // Log the successful addition of the new connection
   logger.info(
-    `Connection added for device ${serialNumber}, model: ${model} and IP address: ${ipAddress}`
+    `Connection added for device ${serialNumber}, model: ${model}, IP address: ${ipAddress}`
   );
 };
 

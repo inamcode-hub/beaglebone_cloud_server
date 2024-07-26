@@ -25,7 +25,7 @@ const handleMessage = async (ws, message) => {
     // Process message based on type
     switch (parsedMessage.type) {
       case MESSAGE_TYPES.DEVICE_CONNECT:
-        addConnection(serialNumber, model, ipAddress, ws);
+        addConnection(parsedMessage.data || {}, ws);
         break;
       case MESSAGE_TYPES.REQUEST_SENSOR_DATA:
         requestSensorData(serialNumber);
