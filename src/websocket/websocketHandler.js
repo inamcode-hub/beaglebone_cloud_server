@@ -27,6 +27,9 @@ const handleMessage = async (ws, message) => {
       case MESSAGE_TYPES.DEVICE_CONNECT:
         addConnection(parsedMessage.data || {}, ws);
         break;
+      case MESSAGE_TYPES.PING:
+        handlePing(parsedMessage.data || {}, ws);
+        break;
       case MESSAGE_TYPES.REQUEST_SENSOR_DATA:
         requestSensorData(serialNumber);
         break;
@@ -41,9 +44,6 @@ const handleMessage = async (ws, message) => {
         break;
       case MESSAGE_TYPES.DEVICE_DISCONNECT:
         handleDeviceDisconnection(serialNumber);
-        break;
-      case MESSAGE_TYPES.PING:
-        handlePing(serialNumber, model, ws);
         break;
       default:
         logger.warn(`Unknown message type: ${parsedMessage.type}`);

@@ -8,12 +8,12 @@ const DATA_TTL = 60000; // 1 minute TTL for data
 const REQUEST_INTERVAL = 100; // 100 milliseconds interval between requests
 const PING_TIMEOUT = 30000; // 30 seconds timeout for PING
 
+//================================== ADD CONNECTION ==================================//
 const addConnection = (data, ws) => {
   const { serialNumber, model, ipAddress } = data;
 
-  // Check if the serial number already has an active connection
   if (activeConnections[serialNumber]) {
-    // Log a warning and close the new incoming connection
+    // If a connection already exists for the device, close the new connection, Server will remove the inactive connection.
     logger.warn(`Connection already exists for device ${serialNumber}`);
     ws.close();
     return;
@@ -32,7 +32,36 @@ const addConnection = (data, ws) => {
     `Connection added for device ${serialNumber}, model: ${model}, IP address: ${ipAddress}`
   );
 };
+//================================== ADD CONNECTION ==================================//
+//================================== HANDLE PING ==================================//
+const handlePing = (data, ws) => {
+  const { serialNumber, model } = data;
 
+  if (!serialNumber || !model) {
+    logger.warn('PING message received without valid serial number or model');
+    ws.close();
+    return;
+  }
+
+  logger.info(`Received PING from device ${serialNumber} - ${model}`);
+
+  const connection = activeConnections[serialNumber];
+  if (connection) {
+    connection.lastPingTime = Date.now(); // Update the lastPingTime
+    ws.send(
+      JSON.stringify({
+        type: MESSAGE_TYPES.PONG,
+        data: { serialNumber, model },
+      })
+    );
+    logger.info(`Sent PONG to device ${serialNumber} - ${model}`);
+  } else {
+    logger.warn(`No active connection found for device ${serialNumber}`);
+    ws.close();
+  }
+};
+
+//================================== HANDLE PING ==================================//
 const getConnection = (serialNumber) => activeConnections[serialNumber]?.ws;
 
 const getConnectionModel = (serialNumber) =>
@@ -78,26 +107,6 @@ const shouldRequestData = (serialNumber) => {
     return true;
   }
   return false;
-};
-
-const handlePing = (serialNumber, model, ws) => {
-  if (serialNumber && model) {
-    logger.info(`Received PING from device ${serialNumber} - ${model}`);
-    if (activeConnections[serialNumber]) {
-      activeConnections[serialNumber].lastPingTime = Date.now(); // Update the lastPingTime
-      ws.send(
-        JSON.stringify({
-          type: MESSAGE_TYPES.PONG,
-          data: { serialNumber: serialNumber, model: model },
-        })
-      );
-      logger.info(`Sent PONG to device ${serialNumber} - ${model}`);
-    } else {
-      logger.warn(`No active connection found for device ${serialNumber}`);
-    }
-  } else {
-    logger.warn('PING message received without valid serial number or model');
-  }
 };
 
 // Periodic cleanup function
