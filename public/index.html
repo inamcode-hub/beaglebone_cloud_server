@@ -14,22 +14,27 @@
     <div class="container mt-5">
       <h1 class="text-center">BeagleBone IoT Device Management</h1>
 
+      <!-- List Connections Section -->
+      <div class="card mt-4">
+        <div class="card-header">List All Device Connections</div>
+        <div class="card-body">
+          <button id="listConnectionsBtn" class="btn btn-primary">
+            List Connections
+          </button>
+          <div id="connectionsCount" class="mt-3"></div>
+          <div id="connectionsResult" class="mt-3"></div>
+        </div>
+      </div>
+
       <!-- Read Data Section -->
       <div class="card mt-4">
         <div class="card-header">Read Data from Device</div>
         <div class="card-body">
-          <form id="readDataForm">
-            <div class="form-group">
-              <label for="serialNumberRead">Serial Number</label>
-              <input
-                type="text"
-                class="form-control"
-                id="serialNumberRead"
-                required
-              />
-            </div>
-            <button type="submit" class="btn btn-primary">Read Data</button>
-          </form>
+          <div class="form-group">
+            <label for="deviceSelectRead">Select Device</label>
+            <select class="form-control" id="deviceSelectRead"></select>
+          </div>
+          <button id="readDataBtn" class="btn btn-primary">Read Data</button>
           <div id="readDataResult" class="mt-3"></div>
         </div>
       </div>
@@ -38,16 +43,11 @@
       <div class="card mt-4">
         <div class="card-header">Update Device Register</div>
         <div class="card-body">
+          <div class="form-group">
+            <label for="deviceSelectUpdate">Select Device</label>
+            <select class="form-control" id="deviceSelectUpdate"></select>
+          </div>
           <form id="updateRegisterForm">
-            <div class="form-group">
-              <label for="serialNumberUpdate">Serial Number</label>
-              <input
-                type="text"
-                class="form-control"
-                id="serialNumberUpdate"
-                required
-              />
-            </div>
             <div class="form-group">
               <label for="registerAddress"
                 >Register Address<small>(Moisture Set Point 17)</small></label
@@ -71,34 +71,119 @@
           <div id="updateRegisterResult" class="mt-3"></div>
         </div>
       </div>
-
-      <!-- List Connections Section -->
-      <div class="card mt-4">
-        <div class="card-header">List All Device Connections</div>
-        <div class="card-body">
-          <button id="listConnectionsBtn" class="btn btn-primary">
-            List Connections
-          </button>
-          <div id="connectionsResult" class="mt-3"></div>
-        </div>
-      </div>
     </div>
 
     <script>
       $(document).ready(function () {
-        // Handle Read Data form submission
-        $('#readDataForm').on('submit', function (event) {
-          event.preventDefault();
-          var serialNumber = $('#serialNumberRead').val();
+        // Fetch all connections on page load
+        fetchConnections();
+
+        // Handle List Connections button click
+        $('#listConnectionsBtn').on('click', function () {
+          fetchConnections();
+        });
+
+        function fetchConnections() {
+          $.ajax({
+            url: '/api/devices/connections',
+            method: 'GET',
+            success: function (response) {
+              displayConnections(response);
+            },
+            error: function (xhr) {
+              $('#connectionsResult').html(
+                '<div class="alert alert-danger">Error: ' +
+                  xhr.responseJSON.message +
+                  '</div>'
+              );
+            },
+          });
+        }
+
+        function displayConnections(data) {
+          if (data.totalConnections === 0) {
+            $('#connectionsCount').html(
+              '<div class="alert alert-info">No devices connected.</div>'
+            );
+            $('#connectionsResult').html('');
+            return;
+          }
+
+          $('#connectionsCount').html(
+            '<div class="alert alert-info">Total Connections: ' +
+              data.totalConnections +
+              '</div>'
+          );
+
+          var connectionsHtml = '<table class="table table-bordered">';
+          connectionsHtml +=
+            '<thead><tr><th>Serial Number</th><th>Model</th><th>Status</th><th>Actions</th></tr></thead>';
+          connectionsHtml += '<tbody>';
+
+          var deviceSelectReadHtml =
+            '<option value="">Select a device</option>';
+          var deviceSelectUpdateHtml =
+            '<option value="">Select a device</option>';
+
+          data.connections.forEach(function (connection) {
+            connectionsHtml += '<tr>';
+            connectionsHtml += '<td>' + connection.serialNumber + '</td>';
+            connectionsHtml += '<td>' + connection.model + '</td>';
+            connectionsHtml += '<td>' + connection.deviceStatus + '</td>';
+            connectionsHtml +=
+              '<td><button class="btn btn-primary btn-sm read-data-btn" data-serial-number="' +
+              connection.serialNumber +
+              '">Read Data</button></td>';
+            connectionsHtml += '</tr>';
+
+            deviceSelectReadHtml +=
+              '<option value="' +
+              connection.serialNumber +
+              '">' +
+              connection.model +
+              ' (' +
+              connection.serialNumber +
+              ')</option>';
+            deviceSelectUpdateHtml +=
+              '<option value="' +
+              connection.serialNumber +
+              '">' +
+              connection.model +
+              ' (' +
+              connection.serialNumber +
+              ')</option>';
+          });
+
+          connectionsHtml += '</tbody></table>';
+          $('#connectionsResult').html(connectionsHtml);
+
+          $('#deviceSelectRead').html(deviceSelectReadHtml);
+          $('#deviceSelectUpdate').html(deviceSelectUpdateHtml);
+
+          // Add click event for Read Data buttons
+          $('.read-data-btn').on('click', function () {
+            var serialNumber = $(this).data('serial-number');
+            $('#deviceSelectRead').val(serialNumber);
+            $('#readDataBtn').click();
+          });
+        }
+
+        // Handle Read Data button click
+        $('#readDataBtn').on('click', function () {
+          var serialNumber = $('#deviceSelectRead').val();
+          if (!serialNumber) {
+            $('#readDataResult').html(
+              '<div class="alert alert-danger">Please select a device.</div>'
+            );
+            return;
+          }
           $.ajax({
             url: '/api/devices/read-data',
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({ serialNumber: serialNumber }),
             success: function (response) {
-              $('#readDataResult').html(
-                '<pre>' + JSON.stringify(response, null, 2) + '</pre>'
-              );
+              displayReadData(response);
             },
             error: function (xhr) {
               $('#readDataResult').html(
@@ -110,10 +195,37 @@
           });
         });
 
+        function displayReadData(data) {
+          if (data.status !== 'Data received') {
+            $('#readDataResult').html(
+              '<div class="alert alert-danger">Error: Data not received.</div>'
+            );
+            return;
+          }
+
+          var readDataHtml = '<table class="table table-bordered">';
+          readDataHtml +=
+            '<thead><tr><th>Tag Name</th><th>Value</th></tr></thead>';
+          readDataHtml += '<tbody>';
+
+          data.data.forEach(function (item) {
+            readDataHtml += '<tr>';
+            readDataHtml += '<td>' + item.tagName + '</td>';
+            readDataHtml += '<td>' + item.value + '</td>';
+            readDataHtml += '</tr>';
+          });
+
+          readDataHtml += '</tbody></table>';
+          $('#readDataResult').html(readDataHtml);
+
+          // Set the default serial number for the update form
+          $('#deviceSelectUpdate').val($('#deviceSelectRead').val());
+        }
+
         // Handle Update Register form submission
         $('#updateRegisterForm').on('submit', function (event) {
           event.preventDefault();
-          var serialNumber = $('#serialNumberUpdate').val();
+          var serialNumber = $('#deviceSelectUpdate').val();
           var registerAddress = $('#registerAddress').val();
           var newValue = $('#newValue').val();
           $.ajax({
@@ -134,26 +246,6 @@
             },
             error: function (xhr) {
               $('#updateRegisterResult').html(
-                '<div class="alert alert-danger">Error: ' +
-                  xhr.responseJSON.message +
-                  '</div>'
-              );
-            },
-          });
-        });
-
-        // Handle List Connections button click
-        $('#listConnectionsBtn').on('click', function () {
-          $.ajax({
-            url: '/api/devices/connections',
-            method: 'GET',
-            success: function (response) {
-              $('#connectionsResult').html(
-                '<pre>' + JSON.stringify(response, null, 2) + '</pre>'
-              );
-            },
-            error: function (xhr) {
-              $('#connectionsResult').html(
                 '<div class="alert alert-danger">Error: ' +
                   xhr.responseJSON.message +
                   '</div>'
