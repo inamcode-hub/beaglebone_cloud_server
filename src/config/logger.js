@@ -1,17 +1,25 @@
 const { createLogger, format, transports } = require('winston');
+const { combine, timestamp, printf, colorize } = format;
 
+// Define custom log format
+const logFormat = printf(({ level, message, timestamp }) => {
+  return `${timestamp} ${level}: ${message}`;
+});
+
+// Create a logger
 const logger = createLogger({
-  level: 'info',
-  format: format.combine(
-    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    format.printf(
-      ({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`
-    )
-  ),
+  level: 'debug', // Set default level to debug to log all messages
+  format: combine(timestamp(), logFormat),
   transports: [
-    new transports.File({ filename: 'logs/combined.log', level: 'info' }),
-    new transports.File({ filename: 'logs/errors.log', level: 'error' }),
-    new transports.Console(),
+    new transports.Console({
+      format: combine(
+        colorize(), // Use default colors for all levels
+        timestamp(),
+        logFormat
+      ),
+    }),
+    new transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new transports.File({ filename: 'logs/combined.log' }),
   ],
 });
 
