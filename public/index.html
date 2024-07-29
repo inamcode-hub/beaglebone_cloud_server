@@ -75,8 +75,9 @@
 
     <script>
       $(document).ready(function () {
-        // Fetch all connections on page load
+        // Fetch all connections on page load and every 3 seconds
         fetchConnections();
+        setInterval(fetchConnections, 3000);
 
         // Handle List Connections button click
         $('#listConnectionsBtn').on('click', function () {
@@ -106,6 +107,12 @@
               '<div class="alert alert-info">No devices connected.</div>'
             );
             $('#connectionsResult').html('');
+            $('#deviceSelectRead').html(
+              '<option value="">Select a device</option>'
+            );
+            $('#deviceSelectUpdate').html(
+              '<option value="">Select a device</option>'
+            );
             return;
           }
 
@@ -117,7 +124,7 @@
 
           var connectionsHtml = '<table class="table table-bordered">';
           connectionsHtml +=
-            '<thead><tr><th>Serial Number</th><th>Model</th><th>Status</th><th>Actions</th></tr></thead>';
+            '<thead><tr><th>Serial Number</th><th>Model</th><th>Status</th><th>Last Ping</th><th>Actions</th></tr></thead>';
           connectionsHtml += '<tbody>';
 
           var deviceSelectReadHtml =
@@ -126,32 +133,39 @@
             '<option value="">Select a device</option>';
 
           data.connections.forEach(function (connection) {
-            connectionsHtml += '<tr>';
-            connectionsHtml += '<td>' + connection.serialNumber + '</td>';
-            connectionsHtml += '<td>' + connection.model + '</td>';
-            connectionsHtml += '<td>' + connection.deviceStatus + '</td>';
-            connectionsHtml +=
-              '<td><button class="btn btn-primary btn-sm read-data-btn" data-serial-number="' +
-              connection.serialNumber +
-              '">Read Data</button></td>';
-            connectionsHtml += '</tr>';
+            if (connection.deviceStatus === 'online') {
+              var lastPingLocalTime = new Date(
+                connection.lastPingTime
+              ).toLocaleString();
 
-            deviceSelectReadHtml +=
-              '<option value="' +
-              connection.serialNumber +
-              '">' +
-              connection.model +
-              ' (' +
-              connection.serialNumber +
-              ')</option>';
-            deviceSelectUpdateHtml +=
-              '<option value="' +
-              connection.serialNumber +
-              '">' +
-              connection.model +
-              ' (' +
-              connection.serialNumber +
-              ')</option>';
+              connectionsHtml += '<tr>';
+              connectionsHtml += '<td>' + connection.serialNumber + '</td>';
+              connectionsHtml += '<td>' + connection.model + '</td>';
+              connectionsHtml += '<td>' + connection.deviceStatus + '</td>';
+              connectionsHtml += '<td>' + lastPingLocalTime + '</td>';
+              connectionsHtml +=
+                '<td><button class="btn btn-primary btn-sm read-data-btn" data-serial-number="' +
+                connection.serialNumber +
+                '">Read Data</button></td>';
+              connectionsHtml += '</tr>';
+
+              deviceSelectReadHtml +=
+                '<option value="' +
+                connection.serialNumber +
+                '">' +
+                connection.model +
+                ' (' +
+                connection.serialNumber +
+                ')</option>';
+              deviceSelectUpdateHtml +=
+                '<option value="' +
+                connection.serialNumber +
+                '">' +
+                connection.model +
+                ' (' +
+                connection.serialNumber +
+                ')</option>';
+            }
           });
 
           connectionsHtml += '</tbody></table>';
@@ -228,6 +242,12 @@
           var serialNumber = $('#deviceSelectUpdate').val();
           var registerAddress = $('#registerAddress').val();
           var newValue = $('#newValue').val();
+          if (!serialNumber) {
+            $('#updateRegisterResult').html(
+              '<div class="alert alert-danger">Please select a device.</div>'
+            );
+            return;
+          }
           $.ajax({
             url: '/api/devices/update-register',
             method: 'POST',
