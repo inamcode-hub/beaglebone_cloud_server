@@ -80,9 +80,9 @@
         let selectedUpdateDevice = null;
         let expandedSystemInfos = new Set();
 
-        // Fetch all connections on page load and every 3 seconds
+        // Fetch all connections on page load and every 5 seconds
         fetchConnections();
-        setInterval(fetchConnections, 3000);
+        setInterval(fetchConnections, 5000);
 
         // Handle List Connections button click
         $('#listConnectionsBtn').on('click', function () {
