@@ -132,10 +132,8 @@
             '<thead><tr><th>Serial Number</th><th>Model</th><th>Status</th><th>Last Ping</th><th>Actions</th></thead>';
           connectionsHtml += '<tbody>';
 
-          var deviceSelectReadHtml =
-            '<option value="">Select a device</option>';
-          var deviceSelectUpdateHtml =
-            '<option value="">Select a device</option>';
+          var deviceSelectReadHtml = $('#deviceSelectRead').html();
+          var deviceSelectUpdateHtml = $('#deviceSelectUpdate').html();
 
           data.connections.forEach(function (connection) {
             if (connection.deviceStatus === 'online') {
@@ -226,78 +224,25 @@
               connectionsHtml += '</div></div></td>';
               connectionsHtml += '</tr>';
 
-              deviceSelectReadHtml +=
-                '<option value="' +
-                connection.serialNumber +
-                '">' +
-                connection.model +
-                ' (' +
-                connection.serialNumber +
-                ')</option>';
-              deviceSelectUpdateHtml +=
-                '<option value="' +
-                connection.serialNumber +
-                '">' +
-                connection.model +
-                ' (' +
-                connection.serialNumber +
-                ')</option>';
-
-              if (expandedSystemInfos.has(connection.serialNumber)) {
-                connectionsHtml += `
-                  <tr id="system-info-${connection.serialNumber}">
-                    <td colspan="5">
-                      <div class="card"><div class="card-body">
-                        <p><strong>IP Address:</strong> ${
-                          connection.ipAddress
-                        }</p>
-                        <p><strong>Public IP Address:</strong> ${
-                          connection.publicIpAddress
-                        }</p>
-                        <p><strong>BeagleBone Serial Number:</strong> ${
-                          connection.beagleboneSerialNumber
-                        }</p>
-                        <p><strong>Device Status:</strong> ${
-                          connection.deviceStatus
-                        }</p>
-                        <p><strong>Uptime:</strong> ${connection.uptime}</p>
-                        <p><strong>CPU Usage:</strong> ${connection.cpuUsage.join(
-                          ', '
-                        )}</p>
-                        <p><strong>Memory Usage:</strong> Total: ${
-                          connection.memoryUsage.total
-                        }, Free: ${connection.memoryUsage.free}</p>
-                        <p><strong>Disk Usage:</strong> Total: ${
-                          connection.diskUsage.total
-                        }, Free: ${connection.diskUsage.free}</p>
-                        <p><strong>Running Processes:</strong> ${
-                          connection.runningProcesses
-                        }</p>
-                        <p><strong>Firmware Version:</strong> ${
-                          connection.firmwareVersion
-                        }</p>
-                        <p><strong>Connected At:</strong> ${new Date(
-                          connection.connectedAt
-                        ).toLocaleString()}</p>
-                        <p><strong>Network Interfaces:</strong></p>
-                        ${Object.keys(connection.networkInterfaces)
-                          .map(
-                            (iface) => `
-                          <p><strong>${iface}:</strong></p>
-                          ${connection.networkInterfaces[iface]
-                            .map(
-                              (net) => `
-                            <p>Address: ${net.address}, Netmask: ${net.netmask}, Family: ${net.family}, MAC: ${net.mac}, Internal: ${net.internal}</p>
-                          `
-                            )
-                            .join('')}
-                        `
-                          )
-                          .join('')}
-                      </div></div>
-                    </td>
-                  </tr>
-                `;
+              if (!deviceSelectReadHtml.includes(connection.serialNumber)) {
+                deviceSelectReadHtml +=
+                  '<option value="' +
+                  connection.serialNumber +
+                  '">' +
+                  connection.model +
+                  ' (' +
+                  connection.serialNumber +
+                  ')</option>';
+              }
+              if (!deviceSelectUpdateHtml.includes(connection.serialNumber)) {
+                deviceSelectUpdateHtml +=
+                  '<option value="' +
+                  connection.serialNumber +
+                  '">' +
+                  connection.model +
+                  ' (' +
+                  connection.serialNumber +
+                  ')</option>';
               }
             }
           });
@@ -309,8 +254,12 @@
           $('#deviceSelectUpdate').html(deviceSelectUpdateHtml);
 
           // Restore the selected device
-          $('#deviceSelectRead').val(selectedReadDevice);
-          $('#deviceSelectUpdate').val(selectedUpdateDevice);
+          if (selectedReadDevice) {
+            $('#deviceSelectRead').val(selectedReadDevice);
+          }
+          if (selectedUpdateDevice) {
+            $('#deviceSelectUpdate').val(selectedUpdateDevice);
+          }
 
           // Add click event for Read Data buttons
           $('.read-data-btn').on('click', function () {
@@ -323,12 +272,19 @@
           // Add click event for System Info buttons
           $('.system-info-btn').on('click', function () {
             var serialNumber = $(this).data('serial-number');
-            $('#system-info-' + serialNumber).toggle();
-            if ($('#system-info-' + serialNumber).is(':visible')) {
-              expandedSystemInfos.add(serialNumber);
-            } else {
+            var systemInfoRow = $('#system-info-' + serialNumber);
+            if (systemInfoRow.is(':visible')) {
+              systemInfoRow.hide();
               expandedSystemInfos.delete(serialNumber);
+            } else {
+              systemInfoRow.show();
+              expandedSystemInfos.add(serialNumber);
             }
+          });
+
+          // Restore the expanded system information sections
+          expandedSystemInfos.forEach(function (serialNumber) {
+            $('#system-info-' + serialNumber).show();
           });
         }
 
@@ -480,6 +436,7 @@
 
           // Set the default serial number for the update form
           $('#deviceSelectUpdate').val($('#deviceSelectRead').val());
+          selectedUpdateDevice = $('#deviceSelectUpdate').val();
         }
 
         // Handle Update Register form submission
