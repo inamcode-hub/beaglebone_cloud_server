@@ -3,6 +3,7 @@ const {
   readData,
   updateRegister,
   getConnections,
+  reboot_device,
 } = require('../controllers/deviceController');
 const validate = require('../middlewares/validator');
 const { body } = require('express-validator');
@@ -29,6 +30,14 @@ router.post(
     body('newValue').notEmpty().withMessage('newValue is required'),
   ]),
   updateRegister
+);
+
+router.post(
+  '/reboot-device',
+  validate([
+    body('serialNumber').notEmpty().withMessage('serialNumber is required'),
+  ]),
+  reboot_device
 );
 
 module.exports = router;

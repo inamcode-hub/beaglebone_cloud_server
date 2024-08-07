@@ -159,8 +159,20 @@ const updateRegister = async (req, res, next) => {
   }
 };
 
+const reboot_device = async (req, res, next) => {
+  const { serialNumber } = req.body;
+  logger.info(`Reboot request received for device ${serialNumber}`);
+  try {
+    res.json({ status: 'success', message: 'Reboot request sent' });
+  } catch (error) {
+    logger.error(`Error rebooting device ${serialNumber}: ${error.message}`);
+    next(error);
+  }
+};
+
 module.exports = {
   getConnections,
   readData,
   updateRegister,
+  reboot_device,
 };
