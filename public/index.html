@@ -72,6 +72,21 @@
           <div id="updateRegisterResult" class="mt-3"></div>
         </div>
       </div>
+
+      <!-- Reboot Device Section -->
+      <div class="card mt-4">
+        <div class="card-header">Reboot Device</div>
+        <div class="card-body">
+          <div class="form-group">
+            <label for="deviceSelectReboot">Select Device</label>
+            <select class="form-control" id="deviceSelectReboot"></select>
+          </div>
+          <button id="rebootDeviceBtn" class="btn btn-danger">
+            Reboot Device
+          </button>
+          <div id="rebootDeviceResult" class="mt-3"></div>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -95,6 +110,7 @@
             method: 'GET',
             success: function (response) {
               displayConnections(response);
+              updateDeviceSelectOptions();
             },
             error: function (xhr) {
               $('#connectionsResult').html(
@@ -118,6 +134,9 @@
             $('#deviceSelectUpdate').html(
               '<option value="">Select a device</option>'
             );
+            $('#deviceSelectReboot').html(
+              '<option value="">Select a device</option>'
+            );
             return;
           }
 
@@ -134,6 +153,7 @@
 
           var deviceSelectReadHtml = $('#deviceSelectRead').html();
           var deviceSelectUpdateHtml = $('#deviceSelectUpdate').html();
+          var deviceSelectRebootHtml = $('#deviceSelectReboot').html();
 
           data.connections.forEach(function (connection) {
             if (connection.deviceStatus === 'online') {
@@ -210,15 +230,15 @@
               connectionsHtml += Object.keys(connection.networkInterfaces)
                 .map(
                   (iface) => `
-                <p><strong>${iface}:</strong></p>
-                ${connection.networkInterfaces[iface]
-                  .map(
-                    (net) => `
-                  <p>Address: ${net.address}, Netmask: ${net.netmask}, Family: ${net.family}, MAC: ${net.mac}, Internal: ${net.internal}</p>
+                  <p><strong>${iface}:</strong></p>
+                  ${connection.networkInterfaces[iface]
+                    .map(
+                      (net) => `
+                    <p>Address: ${net.address}, Netmask: ${net.netmask}, Family: ${net.family}, MAC: ${net.mac}, Internal: ${net.internal}</p>
+                  `
+                    )
+                    .join('')}
                 `
-                  )
-                  .join('')}
-              `
                 )
                 .join('');
               connectionsHtml += '</div></div></td>';
@@ -244,6 +264,16 @@
                   connection.serialNumber +
                   ')</option>';
               }
+              if (!deviceSelectRebootHtml.includes(connection.serialNumber)) {
+                deviceSelectRebootHtml +=
+                  '<option value="' +
+                  connection.serialNumber +
+                  '">' +
+                  connection.model +
+                  ' (' +
+                  connection.serialNumber +
+                  ')</option>';
+              }
             }
           });
 
@@ -252,6 +282,7 @@
 
           $('#deviceSelectRead').html(deviceSelectReadHtml);
           $('#deviceSelectUpdate').html(deviceSelectUpdateHtml);
+          $('#deviceSelectReboot').html(deviceSelectRebootHtml);
 
           // Restore the selected device
           if (selectedReadDevice) {
@@ -477,8 +508,43 @@
             },
           });
         });
+
+        // Populate device select options for rebooting
+        function updateDeviceSelectOptions() {
+          $('#deviceSelectReboot').html($('#deviceSelectRead').html());
+        }
+
+        // Handle Reboot Device button click
+        $('#rebootDeviceBtn').on('click', function () {
+          var serialNumber = $('#deviceSelectReboot').val();
+          if (!serialNumber) {
+            $('#rebootDeviceResult').html(
+              '<div class="alert alert-danger">Please select a device.</div>'
+            );
+            return;
+          }
+          $.ajax({
+            url: '/api/devices/reboot-device',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ serialNumber: serialNumber }),
+            success: function (response) {
+              $('#rebootDeviceResult').html(
+                '<div class="alert alert-success">' +
+                  response.message +
+                  '</div>'
+              );
+            },
+            error: function (xhr) {
+              $('#rebootDeviceResult').html(
+                '<div class="alert alert-danger">Error: ' +
+                  xhr.responseJSON.message +
+                  '</div>'
+              );
+            },
+          });
+        });
       });
     </script>
   </body>
 </html>
-<!--  -->
