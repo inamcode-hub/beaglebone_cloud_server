@@ -159,16 +159,42 @@ const updateRegister = async (req, res, next) => {
     next(error);
   }
 };
+const waitForReboot = (serialNumber) => {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      logger.error(
+        `Timeout waiting for reboot acknowledgment for device ${serialNumber}`
+      );
+      reject(new Error('Timeout waiting for reboot acknowledgment'));
+    }, 10000); // 10 seconds timeout, adjust as necessary
+
+    emitter.once(
+      'device_reboot_ack',
+      (ackSerialNumber, error, errorMessage) => {
+        if (ackSerialNumber === serialNumber) {
+          clearTimeout(timeout);
+          if (error) {
+            reject(new Error(errorMessage));
+          } else {
+            resolve();
+          }
+        }
+      }
+    );
+  });
+};
 
 const reboot_device = async (req, res, next) => {
   const { serialNumber } = req.body;
   logger.info(`Reboot request received for device ${serialNumber}`);
+  rebootDevice(serialNumber);
+
   try {
-    rebootDevice(serialNumber);
-    res.json({ status: 'success', message: 'Reboot request sent' });
+    await waitForReboot(serialNumber);
+    res.json({ status: 'success', message: 'Reboot acknowledged' });
   } catch (error) {
     logger.error(`Error rebooting device ${serialNumber}: ${error.message}`);
-    next(error);
+    res.status(500).json({ status: 'error', message: error.message });
   }
 };
 

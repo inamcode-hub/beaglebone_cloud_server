@@ -136,22 +136,18 @@ const processDeviceSettingsUpdateAck = (parsedMessage) => {
 
 const processDeviceRebootAck = (parsedMessage) => {
   const { serialNumber, error, errorMessage } = parsedMessage.data || {};
-
   if (serialNumber) {
     if (error) {
-      logger.error(
-        `Reboot ACK received for device ${serialNumber} with error: ${errorMessage}`
-      );
+      logger.error(`Error rebooting device ${serialNumber}: ${errorMessage}`);
     } else {
-      logger.info(`Reboot ACK received for device ${serialNumber}`);
-      emitter.emit('device_reboot_ack', serialNumber); // Emit event when reboot is acknowledged
+      logger.info(`Reboot acknowledged for device ${serialNumber}`);
     }
-  } else if (error) {
-    logger.error(`Reboot ACK received with error: ${errorMessage}`);
+    emitter.emit('device_reboot_ack', serialNumber, error, errorMessage); // Emit event when reboot is acknowledged
   } else {
     logger.warn('Reboot ACK received without serial number');
   }
 };
+
 const handleDeviceDisconnection = (serialNumber) => {
   try {
     const ws = getConnection(serialNumber);
