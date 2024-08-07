@@ -1,6 +1,7 @@
 const {
   requestSensorData,
   updateDeviceSettings,
+  rebootDevice,
 } = require('../websocket/websocketHandler');
 const {
   getData,
@@ -163,6 +164,7 @@ const reboot_device = async (req, res, next) => {
   const { serialNumber } = req.body;
   logger.info(`Reboot request received for device ${serialNumber}`);
   try {
+    rebootDevice(serialNumber);
     res.json({ status: 'success', message: 'Reboot request sent' });
   } catch (error) {
     logger.error(`Error rebooting device ${serialNumber}: ${error.message}`);

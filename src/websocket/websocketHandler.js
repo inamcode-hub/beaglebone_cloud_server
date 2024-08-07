@@ -42,6 +42,9 @@ const handleMessage = async (ws, message) => {
       case MESSAGE_TYPES.DEVICE_SETTINGS_UPDATE_ACK:
         processDeviceSettingsUpdateAck(parsedMessage);
         break;
+      case MESSAGE_TYPES.REBOOT_DEVICE_ACK:
+        processDeviceRebootAck(parsedMessage);
+        break;
       case MESSAGE_TYPES.DEVICE_DISCONNECT:
         handleDeviceDisconnection(serialNumber);
         break;
@@ -131,6 +134,24 @@ const processDeviceSettingsUpdateAck = (parsedMessage) => {
   }
 };
 
+const processDeviceRebootAck = (parsedMessage) => {
+  const { serialNumber, error, errorMessage } = parsedMessage.data || {};
+
+  if (serialNumber) {
+    if (error) {
+      logger.error(
+        `Reboot ACK received for device ${serialNumber} with error: ${errorMessage}`
+      );
+    } else {
+      logger.info(`Reboot ACK received for device ${serialNumber}`);
+      emitter.emit('device_reboot_ack', serialNumber); // Emit event when reboot is acknowledged
+    }
+  } else if (error) {
+    logger.error(`Reboot ACK received with error: ${errorMessage}`);
+  } else {
+    logger.warn('Reboot ACK received without serial number');
+  }
+};
 const handleDeviceDisconnection = (serialNumber) => {
   try {
     const ws = getConnection(serialNumber);
@@ -166,6 +187,25 @@ const getSerialNumberByWS = (ws) => {
   );
 };
 
+const rebootDevice = (serialNumber) => {
+  try {
+    const ws = getConnection(serialNumber);
+    if (ws) {
+      ws.send(
+        JSON.stringify({
+          type: MESSAGE_TYPES.REBOOT_DEVICE,
+          serialNumber,
+        })
+      );
+      logger.info(`Reboot request sent to device ${serialNumber}`);
+    } else {
+      logger.error(`No connection found for device ${serialNumber}`);
+    }
+  } catch (error) {
+    logger.error(`Error rebooting device ${serialNumber}: ${error.message}`);
+  }
+};
+
 // Set up WebSocket server
 const setupWebSocketServer = (server) => {
   const wss = new WebSocket.Server({ server });
@@ -197,4 +237,5 @@ module.exports = {
   handleDisconnection,
   handleDeviceDisconnection,
   setupWebSocketServer,
+  rebootDevice,
 };
