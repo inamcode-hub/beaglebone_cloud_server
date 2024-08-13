@@ -7,6 +7,7 @@ const {
 } = require('../controllers/deviceController');
 const validate = require('../middlewares/validator');
 const { body } = require('express-validator');
+const { handleDataUpload } = require('../controllers/uploadController');
 
 const router = express.Router();
 
@@ -40,4 +41,5 @@ router.post(
   reboot_device
 );
 
+router.post(`/upload`, handleDataUpload);
 module.exports = router;
