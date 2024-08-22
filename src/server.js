@@ -18,7 +18,7 @@ const startServer = () => {
   const wss = new WebSocket.Server({ server });
 
   app.use(cors()); // Enable CORS
-  app.use(express.json({ limit: '5mb' }));
+  app.use(express.json({ limit: '10mb' }));
   app.use(loggerMiddleware);
   app.use('/api', routes);
   app.use(express.static(path.join(__dirname, '../public')));

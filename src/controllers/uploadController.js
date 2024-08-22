@@ -12,21 +12,23 @@ if (!fs.existsSync(uploadDir)) {
 const handleDataUpload = (req, res) => {
   const { data } = req.body;
 
-  if (!data) {
-    return res.status(400).json({ error: 'No data provided' });
+  if (!data || !Array.isArray(data)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid data format. Expected an array of objects.' });
   }
 
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date().toISOString().replace(/:/g, '-'); // Format the timestamp to be file-system friendly
   const filePath = path.join(uploadDir, `upload_${timestamp}.json`);
 
-  // Save the data to a file
+  // Save the batch data to a file
   fs.writeFile(filePath, JSON.stringify(data, null, 2), (err) => {
     if (err) {
       logger.error(`Failed to save uploaded data: ${err.message}`);
       return res.status(500).json({ error: 'Failed to save data' });
     }
 
-    logger.info(`Data successfully uploaded and saved to ${filePath}`);
+    logger.info(`Batch data successfully uploaded and saved to ${filePath}`);
     res.status(201).json({ message: 'Data uploaded successfully' });
   });
 };
