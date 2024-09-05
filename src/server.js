@@ -11,13 +11,23 @@ const loggerMiddleware = require('./middlewares/loggerMiddleware');
 const errorHandler = require('./middlewares/errorHandler');
 const path = require('path');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 
 const startServer = () => {
   const app = express();
   const server = http.createServer(app);
   const wss = new WebSocket.Server({ server });
 
-  app.use(cors()); // Enable CORS
+  // Apply rate limiting to all requests
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+    message:
+      'Too many requests from this IP, please try again after 15 minutes',
+  });
+
+  app.use(cors());
+  app.use(limiter);
   app.use(express.json({ limit: '10mb' }));
   app.use(loggerMiddleware);
   app.use('/api', routes);
