@@ -3,7 +3,6 @@ const {
   addConnection,
   storeData,
   getConnection,
-  getConnectionModel,
   removeConnection,
   getAllConnections,
   handlePing,
@@ -13,7 +12,10 @@ const emitter = require('../utils/eventEmitter');
 const MESSAGE_TYPES = require('../websocket/constants/messageTypes');
 const { checkAndLogMissingFields } = require('../utils/helpers');
 
-// Existing handleMessage function with new alarm logic
+// Import the alarm handling logic
+const { processAlarmTrigger } = require('./alarmHandler');
+
+// Main message handler function
 const handleMessage = async (ws, message) => {
   try {
     const parsedMessage = JSON.parse(message);
@@ -50,7 +52,7 @@ const handleMessage = async (ws, message) => {
         handleDeviceDisconnection(serialNumber);
         break;
 
-      // New case for ALARM_TRIGGER
+      // Offload ALARM_TRIGGER to alarmHandler
       case MESSAGE_TYPES.ALARM_TRIGGER:
         processAlarmTrigger(parsedMessage, ws);
         break;
@@ -63,75 +65,7 @@ const handleMessage = async (ws, message) => {
   }
 };
 
-// New function to process ALARM_TRIGGER and send ALARM_ACK
-const processAlarmTrigger = (parsedMessage, ws) => {
-  const { serialNumber, alarmType, stage, timestamp } =
-    parsedMessage.data || {};
-
-  // Validate message content
-  if (!serialNumber || !alarmType || !timestamp || !stage) {
-    logger.warn(`Invalid alarm message received. Missing fields.`);
-    return;
-  }
-
-  // Handle different alarm types and stages
-  switch (alarmType) {
-    case 'inlet':
-      handleInletAlarm(serialNumber, stage, timestamp);
-      break;
-    case 'outlet':
-      handleOutletAlarm(serialNumber, stage, timestamp);
-      break;
-    case 'dryingTemp':
-      handleDryingTempAlarm(serialNumber, stage, timestamp);
-      break;
-    default:
-      logger.warn(`Unknown alarm type received: ${alarmType}`);
-      break;
-  }
-
-  // Send acknowledgment (ALARM_ACK) to BeagleBone
-  const ackMessage = {
-    type: 'ALARM_ACK',
-    serialNumber,
-    ackReceived: true,
-    message: `Alarm of type ${alarmType} at stage ${stage} from device ${serialNumber} acknowledged at ${timestamp}`,
-  };
-
-  if (ws.readyState === ws.OPEN) {
-    ws.send(JSON.stringify(ackMessage));
-    logger.info(
-      `Sent ALARM_ACK for device ${serialNumber}: Alarm Type ${alarmType}, Stage: ${stage}`
-    );
-  } else {
-    logger.warn(
-      `WebSocket connection not open for device ${serialNumber}. Could not send acknowledgment.`
-    );
-  }
-};
-
-// Specific functions for handling each alarm type
-function handleInletAlarm(serialNumber, stage, timestamp) {
-  logger.info(
-    `Inlet alarm triggered for device ${serialNumber}: Stage ${stage}, Timestamp ${timestamp}`
-  );
-  // Add your logic here for processing inlet alarm based on the stage (lwl, hwl, etc.)
-}
-
-function handleOutletAlarm(serialNumber, stage, timestamp) {
-  logger.info(
-    `Outlet alarm triggered for device ${serialNumber}: Stage ${stage}, Timestamp ${timestamp}`
-  );
-  // Add your logic here for processing outlet alarm based on the stage (lal, hal, etc.)
-}
-
-function handleDryingTempAlarm(serialNumber, stage, timestamp) {
-  logger.info(
-    `DryingTemp alarm triggered for device ${serialNumber}: Stage ${stage}, Timestamp ${timestamp}`
-  );
-  // Add your logic here for processing dryingTemp alarm based on the stage (lwl, hwl, etc.)
-}
-
+// Function to request sensor data
 const requestSensorData = (serialNumber) => {
   try {
     const ws = getConnection(serialNumber);
@@ -153,8 +87,7 @@ const requestSensorData = (serialNumber) => {
   }
 };
 
-// Other existing functions untouched...
-
+// Function to update device settings
 const updateDeviceSettings = (message) => {
   const { serialNumber, registerAddress, newValue } = message;
   try {
@@ -181,8 +114,7 @@ const updateDeviceSettings = (message) => {
   }
 };
 
-// Other existing functions remain untouched...
-
+// Function to process sensor data response
 const processSensorDataResponse = (parsedMessage) => {
   const { serialNumber, data } = parsedMessage.data || {};
   if (serialNumber) {
@@ -198,8 +130,7 @@ const processSensorDataResponse = (parsedMessage) => {
   }
 };
 
-// Other existing functions remain untouched...
-
+// Function to process device settings update acknowledgment
 const processDeviceSettingsUpdateAck = (parsedMessage) => {
   const { serialNumber, registerAddress, newValue } = parsedMessage.data || {};
   if (serialNumber) {
@@ -216,6 +147,7 @@ const processDeviceSettingsUpdateAck = (parsedMessage) => {
   }
 };
 
+// Function to process device reboot acknowledgment
 const processDeviceRebootAck = (parsedMessage) => {
   const { serialNumber, error, errorMessage } = parsedMessage.data || {};
   if (serialNumber) {
@@ -230,6 +162,7 @@ const processDeviceRebootAck = (parsedMessage) => {
   }
 };
 
+// Function to handle device disconnection
 const handleDeviceDisconnection = (serialNumber) => {
   try {
     const ws = getConnection(serialNumber);
@@ -248,6 +181,7 @@ const handleDeviceDisconnection = (serialNumber) => {
   }
 };
 
+// Function to handle WebSocket disconnection
 const handleDisconnection = (ws) => {
   const serialNumber = getSerialNumberByWS(ws);
   if (serialNumber) {
@@ -259,12 +193,14 @@ const handleDisconnection = (ws) => {
   }
 };
 
+// Helper function to get serial number by WebSocket connection
 const getSerialNumberByWS = (ws) => {
   return Object.keys(getAllConnections()).find(
     (serialNumber) => getConnection(serialNumber) === ws
   );
 };
 
+// Function to reboot a device
 const rebootDevice = (serialNumber) => {
   try {
     const ws = getConnection(serialNumber);
@@ -306,6 +242,7 @@ const setupWebSocketServer = (server) => {
   });
 };
 
+// Export functions
 module.exports = {
   handleMessage,
   requestSensorData,
@@ -316,5 +253,4 @@ module.exports = {
   handleDeviceDisconnection,
   setupWebSocketServer,
   rebootDevice,
-  processAlarmTrigger, // Include this in the exports
 };
